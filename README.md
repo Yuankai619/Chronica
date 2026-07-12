@@ -20,11 +20,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-| Script       | Purpose                        |
-| ------------ | ------------------------------ |
-| `pnpm dev`   | Start the development server   |
-| `pnpm build` | Production build               |
-| `pnpm start` | Serve the production build     |
+| Script              | Purpose                        |
+| ------------------- | ------------------------------ |
+| `pnpm dev`          | Start the development server   |
+| `pnpm build`        | Production build               |
+| `pnpm start`        | Serve the production build     |
+| `pnpm lint`         | Run ESLint                     |
+| `pnpm lint:fix`     | Run ESLint with auto-fix       |
+| `pnpm type-check`   | TypeScript type checking       |
+| `pnpm test`         | Run unit tests (Vitest)        |
+| `pnpm test:watch`   | Run unit tests in watch mode   |
+| `pnpm format`       | Format files with Prettier     |
+| `pnpm format:check` | Check formatting without write |
 
 ## Contributing
 
