@@ -6,6 +6,7 @@ import { getPastWeeks } from "@/server/planning";
 import { computeBalanceContext } from "@/lib/planning";
 import { computeAccuracy } from "@/lib/accuracy";
 import { PlanningForm } from "@/components/planning-form";
+import { RetroCard } from "@/components/retro-card";
 
 export const metadata = { title: "Planning — Chronica" };
 
@@ -49,6 +50,13 @@ export default async function PlanningPage({
   const balances = computeBalanceContext(pastWeeks);
   const accuracy = computeAccuracy(pastWeeks);
 
+  const reviewWeekKey = shiftWeekKey(weekKey, -1);
+  const { data: retro } = await supabase
+    .from("retros")
+    .select("content")
+    .eq("week_start", reviewWeekKey)
+    .maybeSingle();
+
   const { data: planItems } = plan
     ? await supabase
         .from("weekly_plan_items")
@@ -84,6 +92,13 @@ export default async function PlanningPage({
           re-snapshots carried balances.
         </p>
       ) : null}
+
+      <div className="mb-8">
+        <RetroCard
+          reviewWeekKey={reviewWeekKey}
+          initialContent={retro?.content ?? null}
+        />
+      </div>
 
       <PlanningForm
         weekKey={weekKey}
