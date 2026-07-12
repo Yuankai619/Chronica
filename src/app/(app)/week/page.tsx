@@ -5,6 +5,8 @@ import { computeWeekSettlement } from "@/lib/settlement";
 import { formatDuration } from "@/lib/entries";
 import { SettlementTable } from "@/components/settlement-table";
 import { Card } from "@/components/ui/card";
+import { DayGaps } from "@/components/day-gaps";
+import { DEFAULT_DAILY_TARGET_MINUTES, weekDayGaps } from "@/lib/unrecorded";
 
 export const metadata = { title: "Week — Chronica" };
 
@@ -35,20 +37,33 @@ export default async function WeekPage({
 
   const supabase = await createClient();
 
-  const [{ data: categories }, { data: entries }, { data: plan }] =
-    await Promise.all([
-      supabase.from("categories").select("*"),
-      supabase
-        .from("time_entries")
-        .select("*")
-        .gte("started_at", weekStart.toISOString())
-        .lt("started_at", weekEnd.toISOString()),
-      supabase
-        .from("weekly_plans")
-        .select("*")
-        .eq("week_start", weekKey)
-        .maybeSingle(),
-    ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [
+    { data: categories },
+    { data: entries },
+    { data: plan },
+    { data: settings },
+  ] = await Promise.all([
+    supabase.from("categories").select("*"),
+    supabase
+      .from("time_entries")
+      .select("*")
+      .gte("started_at", weekStart.toISOString())
+      .lt("started_at", weekEnd.toISOString()),
+    supabase
+      .from("weekly_plans")
+      .select("*")
+      .eq("week_start", weekKey)
+      .maybeSingle(),
+    supabase
+      .from("user_settings")
+      .select("*")
+      .eq("user_id", user!.id)
+      .maybeSingle(),
+  ]);
 
   const { data: planItems } = plan
     ? await supabase
@@ -121,6 +136,19 @@ export default async function WeekPage({
       ) : null}
 
       <SettlementTable settlement={settlement} />
+
+      <div className="mt-10">
+        <DayGaps
+          gaps={weekDayGaps(
+            weekStart,
+            entries ?? [],
+            settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES,
+          )}
+          targetMinutes={
+            settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES
+          }
+        />
+      </div>
     </main>
   );
 }
