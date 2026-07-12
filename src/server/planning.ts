@@ -11,15 +11,12 @@ import { getWeekEnd } from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
-/**
- * Loads all planned weeks strictly before `targetWeekKey` and computes
- * per-category balance context (last balance, cumulative, recent weeks).
- */
-export async function getBalanceContext(
+/** Loads all planned weeks strictly before `targetWeekKey`. */
+export async function getPastWeeks(
   supabase: Client,
   userId: string,
   targetWeekKey: string,
-): Promise<Map<string, CategoryBalance>> {
+): Promise<PastWeek[]> {
   const { data: plans } = await supabase
     .from("weekly_plans")
     .select("*")
@@ -27,7 +24,7 @@ export async function getBalanceContext(
     .lt("week_start", targetWeekKey)
     .order("week_start", { ascending: false });
 
-  if (!plans || plans.length === 0) return new Map();
+  if (!plans || plans.length === 0) return [];
 
   const { data: items } = await supabase
     .from("weekly_plan_items")
@@ -46,7 +43,7 @@ export async function getBalanceContext(
     .gte("started_at", new Date(`${earliest}T00:00:00`).toISOString())
     .lt("started_at", lastWeekEnd.toISOString());
 
-  const pastWeeks: PastWeek[] = plans.map((plan) => {
+  return plans.map((plan) => {
     const weekStart = new Date(`${plan.week_start}T00:00:00`);
     const weekEnd = getWeekEnd(weekStart);
     return {
@@ -58,6 +55,15 @@ export async function getBalanceContext(
       }),
     };
   });
+}
 
-  return computeBalanceContext(pastWeeks);
+/** Per-category balance context for planning the target week. */
+export async function getBalanceContext(
+  supabase: Client,
+  userId: string,
+  targetWeekKey: string,
+): Promise<Map<string, CategoryBalance>> {
+  return computeBalanceContext(
+    await getPastWeeks(supabase, userId, targetWeekKey),
+  );
 }

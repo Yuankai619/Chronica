@@ -5,6 +5,11 @@ import { savePlan } from "@/app/(app)/planning/actions";
 import type { Category } from "@/lib/categories";
 import { CATEGORY_GROUP_LABELS } from "@/lib/categories";
 import type { CategoryBalance } from "@/lib/planning";
+import {
+  formatRatio,
+  isLikelyOverrun,
+  type CategoryAccuracy,
+} from "@/lib/accuracy";
 import type { PlanItem } from "@/lib/settlement";
 import { formatSignedDuration } from "@/lib/settlement";
 import { Button } from "@/components/ui/button";
@@ -16,11 +21,13 @@ export function PlanningForm({
   categories,
   planItems,
   balances,
+  accuracy,
 }: {
   weekKey: string;
   categories: Category[];
   planItems: PlanItem[] | null;
   balances: Record<string, CategoryBalance>;
+  accuracy: Record<string, CategoryAccuracy>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -66,12 +73,16 @@ export function PlanningForm({
                 Cumulative
               </th>
               <th className="microlabel py-2 text-center font-normal">Carry</th>
+              <th className="microlabel py-2 text-right font-normal">
+                Accuracy
+              </th>
             </tr>
           </thead>
           <tbody>
             {categories.map((category) => {
               const balance = balances[category.id];
               const item = existing.get(category.id);
+              const acc = accuracy[category.id];
               const recentTitle = balance?.recent
                 .map(([w, b]) => `${w}: ${formatSignedDuration(b)}`)
                 .join("\n");
@@ -118,6 +129,20 @@ export function PlanningForm({
                       aria-label={`Carry balance for ${category.name}`}
                       className="size-4 accent-[#f0b429]"
                     />
+                  </td>
+                  <td className="py-2.5 text-right font-mono tabular-nums">
+                    {acc ? (
+                      <span
+                        className={
+                          isLikelyOverrun(acc) ? "text-danger" : "text-muted"
+                        }
+                        title={`${acc.sampleWeeks} week(s) of history; actual vs budget`}
+                      >
+                        {formatRatio(acc.averageRatio)}
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </td>
                 </tr>
               );

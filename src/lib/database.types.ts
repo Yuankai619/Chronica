@@ -40,6 +40,75 @@ export interface Database {
         };
         Relationships: [];
       };
+      principles: {
+        Row: {
+          id: string;
+          user_id: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          content?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      retros: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          week_start: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          week_start?: string;
+          content?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_memories: {
+        Row: {
+          id: string;
+          user_id: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          content: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_settings: {
         Row: {
           user_id: string;
