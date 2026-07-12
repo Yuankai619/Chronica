@@ -8,7 +8,8 @@ import type { Category } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
-import { encodeTaskOption, type TaskRef } from "@/lib/tasks";
+import type { TodoTask } from "@/lib/tasks";
+import { TaskPicker } from "@/components/task-picker";
 
 type TimerSession = Tables<"timer_sessions">;
 
@@ -33,7 +34,7 @@ function StartForm({
   tasks,
 }: {
   categories: Category[];
-  tasks: TaskRef[] | null;
+  tasks: TodoTask[] | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -77,16 +78,7 @@ function StartForm({
         placeholder="Expected minutes (optional)"
         aria-label="Expected minutes"
       />
-      {tasks && tasks.length > 0 ? (
-        <Select name="task" aria-label="To Do task (optional)" defaultValue="">
-          <option value="">No task</option>
-          {tasks.map((task) => (
-            <option key={task.id} value={encodeTaskOption(task)}>
-              {task.title}
-            </option>
-          ))}
-        </Select>
-      ) : null}
+      {tasks && tasks.length > 0 ? <TaskPicker tasks={tasks} /> : null}
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Starting…" : "Start"}
       </Button>
@@ -219,7 +211,7 @@ export function TimerPanel({
 }: {
   categories: Category[];
   session: TimerSession | null;
-  tasks: TaskRef[] | null;
+  tasks: TodoTask[] | null;
 }) {
   const categoryName =
     (session && categories.find((c) => c.id === session.category_id)?.name) ??

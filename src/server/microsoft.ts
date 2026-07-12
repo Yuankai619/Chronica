@@ -3,21 +3,13 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { expiresAtFrom, refreshTokens } from "@/server/microsoft-oauth";
+import type { TodoTask } from "@/lib/tasks";
 
 type Client = SupabaseClient<Database>;
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 const MAX_LISTS = 10;
-
-export interface TodoTask {
-  id: string;
-  title: string;
-  listTitle: string;
-  dueDate: string | null;
-  /** Plain-text body, for AI context. */
-  description: string | null;
-}
 
 /**
  * Returns a valid access token for the user's linked Microsoft account,

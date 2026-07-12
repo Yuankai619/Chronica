@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { encodeTaskOption, type TaskRef } from "@/lib/tasks";
+import type { TodoTask } from "@/lib/tasks";
+import { TaskPicker } from "@/components/task-picker";
 
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -32,7 +33,7 @@ function EntryForm({
 }: {
   categories: Category[];
   entry?: TimeEntry;
-  tasks?: TaskRef[] | null;
+  tasks?: TodoTask[] | null;
   onDone?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -98,19 +99,9 @@ function EntryForm({
         />
       </div>
       {!entry && tasks && tasks.length > 0 ? (
-        <Select
-          name="task"
-          aria-label="To Do task (optional)"
-          defaultValue=""
-          className="sm:w-72"
-        >
-          <option value="">No task</option>
-          {tasks.map((task) => (
-            <option key={task.id} value={encodeTaskOption(task)}>
-              {task.title}
-            </option>
-          ))}
-        </Select>
+        <div className="sm:max-w-96">
+          <TaskPicker tasks={tasks} />
+        </div>
       ) : null}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
@@ -222,7 +213,7 @@ export function EntriesManager({
 }: {
   categories: Category[];
   entries: TimeEntry[];
-  tasks: TaskRef[] | null;
+  tasks: TodoTask[] | null;
 }) {
   const activeCategories = categories.filter((c) => c.archived_at === null);
   const days = groupEntriesByDay(entries);

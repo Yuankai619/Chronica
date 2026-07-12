@@ -1,8 +1,19 @@
-/** Encoding of a To Do task in form option values. */
+/** To Do task shapes and form-value encoding. */
 
 export interface TaskRef {
   id: string;
   title: string;
+}
+
+/** A To Do task as fetched from Microsoft Graph (serializable). */
+export interface TodoTask {
+  id: string;
+  title: string;
+  listTitle: string;
+  /** Naive datetime string from Graph, or null. */
+  dueDate: string | null;
+  /** Plain-text body, for AI context. */
+  description: string | null;
 }
 
 export function encodeTaskOption(task: TaskRef): string {
@@ -21,4 +32,33 @@ export function decodeTaskOption(raw: unknown): TaskRef | null {
     // fall through
   }
   return null;
+}
+
+/** True when a task title is just a link (rendered as a hyperlink). */
+export function isUrlTitle(title: string): boolean {
+  return /^https?:\/\/\S+$/.test(title.trim());
+}
+
+/** "2026-07-20T00:00:00" → "2026-07-20"; null-safe. */
+export function dueDateKey(dueDate: string | null): string | null {
+  return dueDate ? dueDate.slice(0, 10) : null;
+}
+
+/** Groups tasks by list title, preserving encounter order. */
+export function groupTasksByList(
+  tasks: TodoTask[],
+): { list: string; tasks: TodoTask[] }[] {
+  const groups = new Map<string, TodoTask[]>();
+  for (const task of tasks) {
+    const bucket = groups.get(task.listTitle);
+    if (bucket) {
+      bucket.push(task);
+    } else {
+      groups.set(task.listTitle, [task]);
+    }
+  }
+  return [...groups.entries()].map(([list, listTasks]) => ({
+    list,
+    tasks: listTasks,
+  }));
 }

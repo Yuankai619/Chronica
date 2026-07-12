@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
 import { Card } from "@/components/ui/card";
+import { ExternalLink } from "lucide-react";
+import { isUrlTitle } from "@/lib/tasks";
 
 export const metadata = { title: "Tasks — Chronica" };
 
@@ -77,7 +79,21 @@ export default async function TasksPage() {
             <tbody>
               {rows.map((task) => (
                 <tr key={task.id} className="border-b border-hairline">
-                  <td className="py-2.5 pr-3 font-medium">{task.title}</td>
+                  <td className="py-2.5 pr-3 font-medium">
+                    {isUrlTitle(task.title) ? (
+                      <a
+                        href={task.title}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[#7cc0f5] underline-offset-2 hover:underline"
+                      >
+                        {task.title.replace(/^https?:\/\//, "")}
+                        <ExternalLink className="size-3" aria-hidden />
+                      </a>
+                    ) : (
+                      task.title
+                    )}
+                  </td>
                   <td className="py-2.5 text-right font-mono text-accent tabular-nums">
                     {formatDuration(task.totalMinutes)}
                   </td>
