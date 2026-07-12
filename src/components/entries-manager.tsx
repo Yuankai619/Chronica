@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { encodeTaskOption, type TaskRef } from "@/lib/tasks";
 
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -26,10 +27,12 @@ function toLocalInputValue(date: Date): string {
 function EntryForm({
   categories,
   entry,
+  tasks,
   onDone,
 }: {
   categories: Category[];
   entry?: TimeEntry;
+  tasks?: TaskRef[] | null;
   onDone?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +97,21 @@ function EntryForm({
           rows={1}
         />
       </div>
+      {!entry && tasks && tasks.length > 0 ? (
+        <Select
+          name="task"
+          aria-label="To Do task (optional)"
+          defaultValue=""
+          className="sm:w-72"
+        >
+          <option value="">No task</option>
+          {tasks.map((task) => (
+            <option key={task.id} value={encodeTaskOption(task)}>
+              {task.title}
+            </option>
+          ))}
+        </Select>
+      ) : null}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
           {entry ? "Save" : "Log it"}
@@ -200,9 +218,11 @@ function EntryRow({
 export function EntriesManager({
   categories,
   entries,
+  tasks,
 }: {
   categories: Category[];
   entries: TimeEntry[];
+  tasks: TaskRef[] | null;
 }) {
   const activeCategories = categories.filter((c) => c.archived_at === null);
   const days = groupEntriesByDay(entries);
@@ -211,7 +231,7 @@ export function EntriesManager({
     <div className="flex flex-col gap-6">
       <Card>
         <CardTitle>Quick add</CardTitle>
-        <EntryForm categories={activeCategories} />
+        <EntryForm categories={activeCategories} tasks={tasks} />
       </Card>
       {days.length === 0 ? (
         <p className="text-sm text-muted">

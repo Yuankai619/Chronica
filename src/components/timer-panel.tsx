@@ -8,6 +8,7 @@ import type { Category } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
+import { encodeTaskOption, type TaskRef } from "@/lib/tasks";
 
 type TimerSession = Tables<"timer_sessions">;
 
@@ -27,7 +28,13 @@ function notify(title: string, body: string) {
   new Notification(title, { body, tag: "chronica-timer" });
 }
 
-function StartForm({ categories }: { categories: Category[] }) {
+function StartForm({
+  categories,
+  tasks,
+}: {
+  categories: Category[];
+  tasks: TaskRef[] | null;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -70,6 +77,16 @@ function StartForm({ categories }: { categories: Category[] }) {
         placeholder="Expected minutes (optional)"
         aria-label="Expected minutes"
       />
+      {tasks && tasks.length > 0 ? (
+        <Select name="task" aria-label="To Do task (optional)" defaultValue="">
+          <option value="">No task</option>
+          {tasks.map((task) => (
+            <option key={task.id} value={encodeTaskOption(task)}>
+              {task.title}
+            </option>
+          ))}
+        </Select>
+      ) : null}
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Starting…" : "Start"}
       </Button>
@@ -198,9 +215,11 @@ function RunningTimer({
 export function TimerPanel({
   categories,
   session,
+  tasks,
 }: {
   categories: Category[];
   session: TimerSession | null;
+  tasks: TaskRef[] | null;
 }) {
   const categoryName =
     (session && categories.find((c) => c.id === session.category_id)?.name) ??
@@ -215,7 +234,7 @@ export function TimerPanel({
         <CardTitle>
           {session ? "Switch category (saves the current timer)" : "Start"}
         </CardTitle>
-        <StartForm categories={categories} />
+        <StartForm categories={categories} tasks={tasks} />
       </section>
     </div>
   );
