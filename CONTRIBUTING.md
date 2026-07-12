@@ -46,7 +46,8 @@ Each PR must change **fewer than 600 lines** (additions + deletions),
 - Lockfiles (`pnpm-lock.yaml`)
 - Generated files and vendored third-party content (e.g. `.agents/skills/`)
 
-If a change cannot fit, split it into stacked PRs.
+If a change cannot fit, split it into stacked PRs. The limit is a working
+convention (not enforced by CI) — keep PRs reviewable.
 
 ### Description
 
