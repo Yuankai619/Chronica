@@ -11,15 +11,17 @@ export default async function CategoriesPage() {
   if (error) {
     return (
       <main>
-        <h1 className="page-title">Categories</h1>
-        <p className="muted">Failed to load categories: {error.message}</p>
+        <h1 className="mb-6 text-xl font-semibold">Categories</h1>
+        <p className="text-sm text-muted">
+          Failed to load categories: {error.message}
+        </p>
       </main>
     );
   }
 
   return (
     <main>
-      <h1 className="page-title">Categories</h1>
+      <h1 className="mb-6 text-xl font-semibold">Categories</h1>
       <CategoryManager categories={sortCategories(data ?? [])} />
     </main>
   );

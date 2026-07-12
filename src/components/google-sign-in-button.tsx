@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export function GoogleSignInButton() {
   const [pending, setPending] = useState(false);
@@ -22,8 +23,8 @@ export function GoogleSignInButton() {
   }
 
   return (
-    <button className="button" onClick={signIn} disabled={pending}>
+    <Button size="lg" onClick={signIn} disabled={pending}>
       {pending ? "Redirecting…" : "Sign in with Google"}
-    </button>
+    </Button>
   );
 }

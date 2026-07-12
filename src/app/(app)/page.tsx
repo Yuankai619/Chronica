@@ -16,7 +16,7 @@ export default async function Home() {
 
   return (
     <main>
-      <h1 className="page-title">Timer</h1>
+      <h1 className="mb-6 text-xl font-semibold">Timer</h1>
       <TimerPanel
         categories={sortCategories(categories ?? [])}
         session={session}
