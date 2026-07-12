@@ -27,10 +27,15 @@ Before pushing: `pnpm lint && pnpm type-check && pnpm test && pnpm format:check`
 
 ## Project Layout
 
-- `src/app/` — App Router routes, layouts, and route handlers
-- `src/lib/` — pure domain logic (week attribution, settlement math, rollover);
-  keep this framework-free and unit-tested
-- `src/components/` — React components
+- `src/app/(app)/` — authenticated pages (timer, entries, week, planning,
+  tasks, summary, categories, settings) + their server actions
+- `src/app/api/` — route handlers (Microsoft OAuth, AI retro)
+- `src/lib/` — pure domain logic (week attribution, settlement, rollover,
+  accuracy, summaries); keep this framework-free and unit-tested
+- `src/server/` — server-only services (timer reconcile, planning context,
+  Microsoft Graph, Mastra retro agent)
+- `src/components/` — React components; `src/components/ui/` shadcn-style
+  primitives (Tailwind v4 tokens in `globals.css`)
 - `.agents/skills/` — installed agent skills (see below)
 
 ## Skills
