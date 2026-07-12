@@ -1,31 +1,46 @@
-:root {
-  --background: #0d0f12;
-  --foreground: #e6e8eb;
-  --muted: #8b929c;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0b0d;
+  --color-panel: #101216;
+  --color-hairline: #1e2229;
+  --color-foreground: #ecedee;
+  --color-muted: #7d8590;
+  --color-accent: #f0b429;
+  --color-accent-dim: #8a6a1c;
+  --color-danger: #e5484d;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html,
-body {
-  height: 100%;
+  border-color: var(--color-hairline);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
+/* Micro label — uppercase, tracked-out, instrument-panel style */
+.microlabel {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Legacy component classes (removed as pages migrate to shadcn/ui)   */
+/* ------------------------------------------------------------------ */
 
 .landing {
   display: flex;
@@ -43,19 +58,18 @@ body {
 }
 
 .landing p {
-  color: var(--muted);
+  color: var(--color-muted);
 }
 
 .button {
-  background: var(--foreground);
-  color: var(--background);
-  border: 1px solid var(--foreground);
+  background: var(--color-foreground);
+  color: var(--color-background);
+  border: 1px solid var(--color-foreground);
   border-radius: 6px;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s ease;
 }
 
 .button:hover {
@@ -69,67 +83,29 @@ body {
 
 .button-secondary {
   background: transparent;
-  color: var(--muted);
-  border-color: var(--muted);
+  color: var(--color-muted);
+  border-color: var(--color-muted);
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--color-muted);
 }
 
 .link-button {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--color-muted);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0.25rem;
 }
 
 .link-button:hover {
-  color: var(--foreground);
+  color: var(--color-foreground);
 }
 
 .link-danger:hover {
-  color: #e5484d;
-}
-
-/* App shell */
-
-.app-shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0 1rem 3rem;
-}
-
-.app-nav {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #23262b;
-  margin-bottom: 2rem;
-}
-
-.app-nav a {
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.app-nav a:hover {
-  color: var(--foreground);
-}
-
-.app-nav-brand {
-  font-weight: 600;
-  color: var(--foreground) !important;
-}
-
-.app-nav-links {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
+  color: var(--color-danger);
 }
 
 .page-title {
@@ -138,14 +114,12 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/* Forms */
-
 input,
 select,
 textarea {
-  background: #14171b;
-  color: var(--foreground);
-  border: 1px solid #2a2e34;
+  background: var(--color-panel);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-hairline);
   border-radius: 6px;
   padding: 0.5rem 0.7rem;
   font-size: 0.9rem;
@@ -157,15 +131,13 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--muted);
+  border-color: var(--color-muted);
 }
 
 .form-error {
-  color: #e5484d;
+  color: var(--color-danger);
   font-size: 0.85rem;
 }
-
-/* Categories */
 
 .category-manager {
   display: flex;
@@ -197,7 +169,7 @@ textarea:focus {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #1c1f24;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .category-row-main {
@@ -212,12 +184,12 @@ textarea:focus {
 }
 
 .category-group {
-  color: var(--muted);
+  color: var(--color-muted);
   font-size: 0.8rem;
 }
 
 .category-description {
-  color: var(--muted);
+  color: var(--color-muted);
   font-size: 0.85rem;
 }
 
@@ -231,15 +203,6 @@ textarea:focus {
   opacity: 0.55;
 }
 
-@media (max-width: 480px) {
-  .category-row {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-}
-
-/* Timer */
-
 .timer-panel {
   display: flex;
   flex-direction: column;
@@ -252,31 +215,31 @@ textarea:focus {
   align-items: flex-start;
   gap: 0.5rem;
   padding: 1.25rem;
-  border: 1px solid #23262b;
+  border: 1px solid var(--color-hairline);
   border-radius: 10px;
 }
 
 .timer-category {
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--color-muted);
 }
 
 .timer-elapsed {
   font-size: 2.5rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
+  font-family: var(--font-mono);
 }
 
 .timer-over {
-  color: #f0a03c;
+  color: var(--color-accent);
   font-size: 0.9rem;
 }
 
 .timer-banner {
-  color: #f0a03c;
+  color: var(--color-accent);
   font-size: 0.85rem;
-  border: 1px solid #4a3a1e;
+  border: 1px solid var(--color-accent-dim);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
 }

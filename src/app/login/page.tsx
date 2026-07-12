@@ -13,9 +13,17 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="landing">
-      <h1>Chronica</h1>
-      <p>Time, accounted for.</p>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
+      <div className="flex flex-col items-center gap-2">
+        <p className="microlabel">Time, accounted for</p>
+        <h1 className="font-mono text-3xl font-semibold tracking-[0.25em] uppercase">
+          Chronica
+        </h1>
+      </div>
+      <p className="max-w-sm text-center text-sm text-muted">
+        Record every hour the Lyubishchev way — budgets, settlements, and an
+        honest ledger of where your time goes.
+      </p>
       <GoogleSignInButton />
     </main>
   );
