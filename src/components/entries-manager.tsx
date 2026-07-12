@@ -1,0 +1,245 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  confirmEntry,
+  createEntry,
+  deleteEntry,
+  updateEntry,
+} from "@/app/(app)/entries/actions";
+import {
+  formatDuration,
+  groupEntriesByDay,
+  type TimeEntry,
+} from "@/lib/entries";
+import type { Category } from "@/lib/categories";
+import { Button } from "@/components/ui/button";
+import { Input, Select, Textarea } from "@/components/ui/input";
+import { Card, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+function toLocalInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function EntryForm({
+  categories,
+  entry,
+  onDone,
+}: {
+  categories: Category[];
+  entry?: TimeEntry;
+  onDone?: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function submit(formData: FormData) {
+    if ((formData.get("started_at") as string) === "") {
+      formData.set("started_at", toLocalInputValue(new Date()));
+    }
+    startTransition(async () => {
+      const result = entry
+        ? await updateEntry(entry.id, formData)
+        : await createEntry(formData);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setError(null);
+        onDone?.();
+      }
+    });
+  }
+
+  return (
+    <form action={submit} className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row">
+        <Select
+          name="category_id"
+          aria-label="Category"
+          defaultValue={entry?.category_id}
+          required
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.archived_at ? " (archived)" : ""}
+            </option>
+          ))}
+        </Select>
+        <Input
+          name="duration"
+          placeholder="Duration — 90 or 1:30"
+          aria-label="Duration"
+          defaultValue={entry ? String(entry.duration_minutes) : ""}
+          className="sm:w-44"
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-2.5 sm:flex-row">
+        <Input
+          name="started_at"
+          type="datetime-local"
+          aria-label="Start time (defaults to now)"
+          defaultValue={
+            entry ? toLocalInputValue(new Date(entry.started_at)) : ""
+          }
+          className="sm:w-56"
+        />
+        <Textarea
+          name="note"
+          placeholder="Note (optional)"
+          defaultValue={entry?.note ?? ""}
+          rows={1}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending}>
+          {entry ? "Save" : "Log it"}
+        </Button>
+        {onDone ? (
+          <Button variant="ghost" type="button" onClick={onDone}>
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+    </form>
+  );
+}
+
+function EntryRow({
+  entry,
+  categories,
+}: {
+  entry: TimeEntry;
+  categories: Category[];
+}) {
+  const [editing, setEditing] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const category = categories.find((c) => c.id === entry.category_id);
+  const startedAt = new Date(entry.started_at);
+
+  if (editing) {
+    return (
+      <li className="border-b border-hairline py-4">
+        <EntryForm
+          categories={categories}
+          entry={entry}
+          onDone={() => setEditing(false)}
+        />
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex flex-col justify-between gap-2 border-b border-hairline py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-sm text-muted tabular-nums">
+            {startedAt.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+          <span className="font-medium">
+            {category?.name ?? "Unknown category"}
+          </span>
+          <span className="font-mono text-sm text-accent tabular-nums">
+            {formatDuration(entry.duration_minutes)}
+          </span>
+          {entry.source === "timer" ? <Badge>timer</Badge> : null}
+          {entry.needs_confirmation ? (
+            <Badge variant="warning">needs confirmation</Badge>
+          ) : null}
+          {entry.todo_task_title ? (
+            <Badge>{entry.todo_task_title}</Badge>
+          ) : null}
+        </div>
+        {entry.note ? (
+          <span className="text-sm text-muted">{entry.note}</span>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 gap-1">
+        {entry.needs_confirmation ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                await confirmEntry(entry.id);
+              })
+            }
+          >
+            Confirm
+          </Button>
+        ) : null}
+        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          Edit
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (!confirm("Delete this entry?")) return;
+            startTransition(async () => {
+              await deleteEntry(entry.id);
+            });
+          }}
+        >
+          Delete
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+export function EntriesManager({
+  categories,
+  entries,
+}: {
+  categories: Category[];
+  entries: TimeEntry[];
+}) {
+  const activeCategories = categories.filter((c) => c.archived_at === null);
+  const days = groupEntriesByDay(entries);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardTitle>Quick add</CardTitle>
+        <EntryForm categories={activeCategories} />
+      </Card>
+      {days.length === 0 ? (
+        <p className="text-sm text-muted">
+          No entries yet — run a timer or log one above.
+        </p>
+      ) : (
+        days.map((group) => (
+          <section key={group.day}>
+            <div className="flex items-baseline justify-between">
+              <h2 className="microlabel">{group.day}</h2>
+              <span className="font-mono text-xs text-muted tabular-nums">
+                {formatDuration(
+                  group.entries.reduce((sum, e) => sum + e.duration_minutes, 0),
+                )}
+              </span>
+            </div>
+            <ul className="mt-1 flex flex-col">
+              {group.entries.map((entry) => (
+                <EntryRow
+                  key={entry.id}
+                  entry={entry}
+                  categories={categories}
+                />
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+    </div>
+  );
+}
