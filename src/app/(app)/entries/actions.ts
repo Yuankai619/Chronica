@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseEntryInput } from "@/lib/entries";
+import { decodeTaskOption } from "@/lib/tasks";
 
 export interface ActionResult {
   error?: string;
@@ -33,10 +34,14 @@ export async function createEntry(formData: FormData): Promise<ActionResult> {
   const parsed = parseEntryInput(entryValues(formData));
   if (!parsed.ok) return { error: parsed.error };
 
+  const task = decodeTaskOption(formData.get("task"));
+
   const { error } = await supabase.from("time_entries").insert({
     ...parsed.input,
     user_id: user.id,
     source: "manual",
+    todo_task_id: task?.id ?? null,
+    todo_task_title: task?.title ?? null,
   });
   if (error) return { error: error.message };
 

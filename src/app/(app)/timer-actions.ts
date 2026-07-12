@@ -7,6 +7,7 @@ import {
   getReconciledSession,
   saveAndClearSession,
 } from "@/server/timer";
+import { decodeTaskOption } from "@/lib/tasks";
 
 export interface ActionResult {
   error?: string;
@@ -51,12 +52,16 @@ export async function startTimer(formData: FormData): Promise<ActionResult> {
     if (saved.error) return saved;
   }
 
+  const task = decodeTaskOption(formData.get("task"));
+
   const cap = await getCapMinutes(supabase, user.id);
   const { error } = await supabase.from("timer_sessions").insert({
     user_id: user.id,
     category_id: categoryId,
     expected_minutes: expectedMinutes,
     cap_minutes: cap,
+    todo_task_id: task?.id ?? null,
+    todo_task_title: task?.title ?? null,
   });
   // 23505 = another session already exists (double-click) — treat as success.
   if (error && error.code !== "23505") return { error: error.message };

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
 import { getReconciledSession } from "@/server/timer";
+import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
 import { formatDuration } from "@/lib/entries";
 import {
@@ -38,6 +39,8 @@ export default async function Home() {
       .maybeSingle(),
   ]);
 
+  const tasks = await getOpenTasks(supabase, user!.id);
+
   const target = settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES;
   const recordedToday =
     recordedByDay(todayEntries ?? []).get(dayKey(new Date())) ?? 0;
@@ -65,6 +68,7 @@ export default async function Home() {
       <TimerPanel
         categories={sortCategories(categories ?? [])}
         session={session}
+        tasks={tasks}
       />
     </main>
   );
