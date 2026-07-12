@@ -33,6 +33,22 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm format`       | Format files with Prettier     |
 | `pnpm format:check` | Check formatting without write |
 
+## Setup
+
+1. Copy `.env.example` to `.env.local` and fill in the Supabase URL/key.
+   Optional integrations: Microsoft To Do (Azure app registration) and the
+   AI Retro (any OpenAI-compatible key).
+2. Apply the SQL migrations in `supabase/migrations/` (see
+   [supabase/README.md](./supabase/README.md)).
+3. `pnpm install && pnpm dev`.
+
+## Pages
+
+`/` timer + today's unrecorded gap · `/entries` quick add & editing ·
+`/week` live settlement · `/planning` budgets, rollover & AI retro ·
+`/tasks` per-task time costs · `/summary` monthly/annual reports ·
+`/categories` & `/settings` administration.
+
 ## Contributing
 
 All changes go through pull requests — see
