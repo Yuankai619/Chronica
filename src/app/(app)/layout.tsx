@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { href: "/week", label: "Week" },
   { href: "/planning", label: "Planning" },
   { href: "/categories", label: "Categories" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function AppLayout({
