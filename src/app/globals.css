@@ -237,3 +237,58 @@ textarea:focus {
     gap: 0.5rem;
   }
 }
+
+/* Timer */
+
+.timer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.timer-running {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid #23262b;
+  border-radius: 10px;
+}
+
+.timer-category {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.timer-elapsed {
+  font-size: 2.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.timer-over {
+  color: #f0a03c;
+  font-size: 0.9rem;
+}
+
+.timer-banner {
+  color: #f0a03c;
+  font-size: 0.85rem;
+  border: 1px solid #4a3a1e;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.timer-switch-hint {
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.timer-start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 420px;
+}
