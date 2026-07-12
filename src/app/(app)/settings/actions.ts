@@ -40,3 +40,21 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
   revalidatePath("/week");
   return {};
 }
+
+/** Removes the linked Microsoft account and its tokens. */
+export async function unlinkMicrosoft(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("microsoft_accounts")
+    .delete()
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return {};
+}
