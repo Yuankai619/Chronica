@@ -49,27 +49,29 @@ export default async function Home() {
   return (
     <main>
       <h1 className="mb-6 text-xl font-semibold">Timer</h1>
-      <div className="mb-8 grid grid-cols-2 gap-3">
-        <Card>
-          <p className="microlabel mb-1">Recorded today</p>
-          <p className="font-mono text-2xl font-semibold tabular-nums">
-            {formatDuration(recordedToday)}
-          </p>
-        </Card>
-        <Card>
-          <p className="microlabel mb-1">Unrecorded</p>
-          <p
-            className={`font-mono text-2xl font-semibold tabular-nums ${unrecorded > 0 ? "text-accent" : ""}`}
-          >
-            {formatDuration(unrecorded)}
-          </p>
-        </Card>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <TimerPanel
+          categories={sortCategories(categories ?? [])}
+          session={session}
+          tasks={tasks}
+        />
+        <div className="order-first grid grid-cols-2 gap-3 lg:order-0 lg:grid-cols-1 lg:content-start">
+          <Card>
+            <p className="microlabel mb-1">Recorded today</p>
+            <p className="font-mono text-2xl font-semibold tabular-nums">
+              {formatDuration(recordedToday)}
+            </p>
+          </Card>
+          <Card>
+            <p className="microlabel mb-1">Unrecorded</p>
+            <p
+              className={`font-mono text-2xl font-semibold tabular-nums ${unrecorded > 0 ? "text-accent" : ""}`}
+            >
+              {formatDuration(unrecorded)}
+            </p>
+          </Card>
+        </div>
       </div>
-      <TimerPanel
-        categories={sortCategories(categories ?? [])}
-        session={session}
-        tasks={tasks}
-      />
     </main>
   );
 }
