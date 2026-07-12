@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { href: "/week", label: "Week" },
   { href: "/planning", label: "Planning" },
   { href: "/tasks", label: "Tasks" },
+  { href: "/summary", label: "Summary" },
   { href: "/categories", label: "Categories" },
   { href: "/settings", label: "Settings" },
 ];
