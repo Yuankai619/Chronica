@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { startTimer, stopTimer } from "@/app/(app)/timer-actions";
 import type { Tables } from "@/lib/database.types";
 import type { Category } from "@/lib/categories";
+import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/input";
+import { Card, CardTitle } from "@/components/ui/card";
 
 type TimerSession = Tables<"timer_sessions">;
 
@@ -14,9 +17,10 @@ function formatElapsed(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
+  const hh = String(h).padStart(2, "0");
   const mm = String(m).padStart(2, "0");
   const ss = String(s).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  return `${hh}:${mm}:${ss}`;
 }
 
 function notify(title: string, body: string) {
@@ -43,22 +47,22 @@ function StartForm({ categories }: { categories: Category[] }) {
 
   if (categories.length === 0) {
     return (
-      <p className="muted">
+      <p className="text-sm text-muted">
         Create a category first, then start your first timer.
       </p>
     );
   }
 
   return (
-    <form action={submit} className="timer-start-form">
-      <select name="category_id" aria-label="Category" required>
+    <form action={submit} className="flex max-w-md flex-col gap-2.5">
+      <Select name="category_id" aria-label="Category" required>
         {categories.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
           </option>
         ))}
-      </select>
-      <input
+      </Select>
+      <Input
         name="expected_minutes"
         type="number"
         min={1}
@@ -66,10 +70,10 @@ function StartForm({ categories }: { categories: Category[] }) {
         placeholder="Expected minutes (optional)"
         aria-label="Expected minutes"
       />
-      <button className="button" type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Starting…" : "Start"}
-      </button>
-      {error ? <p className="form-error">{error}</p> : null}
+      </Button>
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
     </form>
   );
 }
@@ -150,34 +154,44 @@ function RunningTimer({
   }, [elapsedMin, session.cap_minutes, router]);
 
   return (
-    <div className="timer-running">
-      <p className="timer-category">{categoryName}</p>
-      <p className="timer-elapsed">{formatElapsed(elapsedSeconds)}</p>
-      {session.expected_minutes !== null ? (
-        <p className={expectedReached ? "timer-over" : "muted"}>
-          {expectedReached
-            ? `Expected ${session.expected_minutes} min passed`
-            : `Expected: ${session.expected_minutes} min`}
+    <Card className="relative overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-accent"
+        aria-hidden
+      />
+      <div className="flex flex-col items-start gap-2">
+        <p className="microlabel">Recording · {categoryName}</p>
+        <p className="font-mono text-6xl font-semibold tracking-tight tabular-nums">
+          {formatElapsed(elapsedSeconds)}
         </p>
-      ) : null}
-      {notificationsBlocked ? (
-        <p className="timer-banner">
-          Browser notifications are off — reminders will only appear here and in
-          the tab title.
-        </p>
-      ) : null}
-      <button
-        className="button"
-        disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            await stopTimer();
-          })
-        }
-      >
-        {pending ? "Stopping…" : "Stop"}
-      </button>
-    </div>
+        {session.expected_minutes !== null ? (
+          <p
+            className={`text-sm ${expectedReached ? "text-accent" : "text-muted"}`}
+          >
+            {expectedReached
+              ? `Expected ${session.expected_minutes} min passed`
+              : `Expected: ${session.expected_minutes} min`}
+          </p>
+        ) : null}
+        {notificationsBlocked ? (
+          <p className="rounded-md border border-accent-dim px-3 py-2 text-sm text-accent">
+            Browser notifications are off — reminders will only appear here and
+            in the tab title.
+          </p>
+        ) : null}
+        <Button
+          variant="outline"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await stopTimer();
+            })
+          }
+        >
+          {pending ? "Stopping…" : "Stop"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 
@@ -193,17 +207,14 @@ export function TimerPanel({
     "Unknown category";
 
   return (
-    <div className="timer-panel">
+    <div className="flex flex-col gap-8">
       {session ? (
         <RunningTimer session={session} categoryName={categoryName} />
       ) : null}
-      <section>
-        {session ? (
-          <p className="muted timer-switch-hint">
-            Start another category to switch — the running timer is saved
-            automatically.
-          </p>
-        ) : null}
+      <section className="flex flex-col gap-3">
+        <CardTitle>
+          {session ? "Switch category (saves the current timer)" : "Start"}
+        </CardTitle>
         <StartForm categories={categories} />
       </section>
     </div>

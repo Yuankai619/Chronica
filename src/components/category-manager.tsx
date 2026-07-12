@@ -13,6 +13,10 @@ import {
   CATEGORY_GROUPS,
   type Category,
 } from "@/lib/categories";
+import { Button } from "@/components/ui/button";
+import { Input, Select, Textarea } from "@/components/ui/input";
+import { Card, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 function CategoryForm({
   category,
@@ -39,42 +43,45 @@ function CategoryForm({
   }
 
   return (
-    <form action={submit} className="category-form">
-      <input
-        name="name"
-        placeholder="Category name"
-        defaultValue={category?.name}
-        maxLength={100}
-        required
-      />
-      <select
-        name="category_group"
-        defaultValue={category?.category_group ?? "core"}
-        aria-label="Group"
-      >
-        {CATEGORY_GROUPS.map((g) => (
-          <option key={g} value={g}>
-            {CATEGORY_GROUP_LABELS[g]}
-          </option>
-        ))}
-      </select>
-      <textarea
+    <form action={submit} className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row">
+        <Input
+          name="name"
+          placeholder="Category name"
+          defaultValue={category?.name}
+          maxLength={100}
+          required
+        />
+        <Select
+          name="category_group"
+          defaultValue={category?.category_group ?? "core"}
+          aria-label="Group"
+          className="sm:w-44"
+        >
+          {CATEGORY_GROUPS.map((g) => (
+            <option key={g} value={g}>
+              {CATEGORY_GROUP_LABELS[g]}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Textarea
         name="description"
         placeholder="Description (context for the AI; only shown here)"
         defaultValue={category?.description ?? ""}
         rows={2}
       />
-      <div className="category-form-actions">
-        <button className="button" type="submit" disabled={pending}>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={pending}>
           {category ? "Save" : "Add category"}
-        </button>
+        </Button>
         {onDone ? (
-          <button className="link-button" type="button" onClick={onDone}>
+          <Button variant="ghost" type="button" onClick={onDone}>
             Cancel
-          </button>
+          </Button>
         ) : null}
       </div>
-      {error ? <p className="form-error">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
     </form>
   );
 }
@@ -86,55 +93,51 @@ function CategoryRow({ category }: { category: Category }) {
 
   if (editing) {
     return (
-      <li className="category-row">
+      <li className="border-b border-hairline py-4">
         <CategoryForm category={category} onDone={() => setEditing(false)} />
       </li>
     );
   }
 
   return (
-    <li className={`category-row${archived ? " category-archived" : ""}`}>
-      <div className="category-row-main">
-        <span className="category-name">{category.name}</span>
-        <span className="category-group">
-          {CATEGORY_GROUP_LABELS[category.category_group]}
-          {archived ? " · archived" : ""}
-        </span>
+    <li
+      className={`flex flex-col justify-between gap-2 border-b border-hairline py-3 sm:flex-row sm:items-start sm:gap-4 ${archived ? "opacity-50" : ""}`}
+    >
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{category.name}</span>
+          <Badge variant={category.category_group}>
+            {CATEGORY_GROUP_LABELS[category.category_group]}
+          </Badge>
+          {archived ? <Badge>archived</Badge> : null}
+        </div>
         {category.description ? (
-          <span className="category-description">{category.description}</span>
+          <span className="text-sm text-muted">{category.description}</span>
         ) : null}
       </div>
-      <div className="category-row-actions">
-        <button className="link-button" onClick={() => setEditing(true)}>
+      <div className="flex shrink-0 gap-1">
+        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
           Edit
-        </button>
-        {archived ? (
-          <button
-            className="link-button"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              if (archived) {
                 await unarchiveCategory(category.id);
-              })
-            }
-          >
-            Unarchive
-          </button>
-        ) : (
-          <button
-            className="link-button"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
+              } else {
                 await archiveCategory(category.id);
-              })
-            }
-          >
-            Archive
-          </button>
-        )}
-        <button
-          className="link-button link-danger"
+              }
+            })
+          }
+        >
+          {archived ? "Unarchive" : "Archive"}
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
           disabled={pending}
           onClick={() => {
             if (!confirm(`Delete "${category.name}"?`)) return;
@@ -144,7 +147,7 @@ function CategoryRow({ category }: { category: Category }) {
           }}
         >
           Delete
-        </button>
+        </Button>
       </div>
     </li>
   );
@@ -152,12 +155,17 @@ function CategoryRow({ category }: { category: Category }) {
 
 export function CategoryManager({ categories }: { categories: Category[] }) {
   return (
-    <div className="category-manager">
-      <CategoryForm />
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardTitle>New category</CardTitle>
+        <CategoryForm />
+      </Card>
       {categories.length === 0 ? (
-        <p className="muted">No categories yet — add your first one above.</p>
+        <p className="text-sm text-muted">
+          No categories yet — add your first one above.
+        </p>
       ) : (
-        <ul className="category-list">
+        <ul className="flex flex-col">
           {categories.map((c) => (
             <CategoryRow key={c.id} category={c} />
           ))}
