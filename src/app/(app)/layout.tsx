@@ -3,6 +3,7 @@ import Link from "next/link";
 const NAV_LINKS = [
   { href: "/", label: "Timer" },
   { href: "/entries", label: "Entries" },
+  { href: "/week", label: "Week" },
   { href: "/categories", label: "Categories" },
 ];
 
