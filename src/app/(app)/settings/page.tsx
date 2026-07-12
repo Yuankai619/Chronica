@@ -3,6 +3,7 @@ import { DEFAULT_CAP_MINUTES } from "@/lib/timer";
 import { DEFAULT_DAILY_TARGET_MINUTES } from "@/lib/unrecorded";
 import { SettingsForm } from "@/components/settings-form";
 import { MicrosoftLinkCard } from "@/components/microsoft-link-card";
+import { PrinciplesCard } from "@/components/principles-card";
 
 export const metadata = { title: "Settings — Chronica" };
 
@@ -30,6 +31,11 @@ export default async function SettingsPage({
       .maybeSingle(),
   ]);
 
+  const { data: principles } = await supabase
+    .from("principles")
+    .select("*")
+    .order("created_at");
+
   return (
     <main>
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
@@ -40,6 +46,7 @@ export default async function SettingsPage({
             settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES
           }
         />
+        <PrinciplesCard principles={principles ?? []} />
         <MicrosoftLinkCard
           linkedUsername={
             msAccount

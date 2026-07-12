@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
 import { getWeekKey, getWeekStart } from "@/lib/week";
-import { getBalanceContext } from "@/server/planning";
+import { getPastWeeks } from "@/server/planning";
+import { computeBalanceContext } from "@/lib/planning";
+import { computeAccuracy } from "@/lib/accuracy";
 import { PlanningForm } from "@/components/planning-form";
 
 export const metadata = { title: "Planning — Chronica" };
@@ -34,15 +36,18 @@ export default async function PlanningPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: categories }, balances, { data: plan }] = await Promise.all([
+  const [{ data: categories }, pastWeeks, { data: plan }] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
-    getBalanceContext(supabase, user!.id, weekKey),
+    getPastWeeks(supabase, user!.id, weekKey),
     supabase
       .from("weekly_plans")
       .select("*")
       .eq("week_start", weekKey)
       .maybeSingle(),
   ]);
+
+  const balances = computeBalanceContext(pastWeeks);
+  const accuracy = computeAccuracy(pastWeeks);
 
   const { data: planItems } = plan
     ? await supabase
@@ -85,6 +90,7 @@ export default async function PlanningPage({
         categories={sortCategories(categories ?? [])}
         planItems={planItems}
         balances={Object.fromEntries(balances)}
+        accuracy={Object.fromEntries(accuracy)}
       />
     </main>
   );
