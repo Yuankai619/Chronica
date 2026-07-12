@@ -16,6 +16,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.11",
+    "@mastra/core": "^1.50.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.2",
     "class-variance-authority": "^0.7.1",
