@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
 import { TaskCompleteCheckbox } from "@/components/task-complete-checkbox";
 import { cn } from "@/lib/utils";
+import { dayKeyInTz, zonedDayStart } from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 
 export const metadata = { title: "Tasks — Chronica" };
 
@@ -59,8 +61,8 @@ export default async function TasksPage({
   const tz = settings?.timezone ?? "Asia/Taipei";
 
   // Completed-today rows expire after the day passes: purge, then read.
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const timeZone = await getUserTimeZone();
+  const todayStart = zonedDayStart(dayKeyInTz(new Date(), timeZone), timeZone);
   await supabase
     .from("completed_tasks")
     .delete()

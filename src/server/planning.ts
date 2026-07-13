@@ -5,7 +5,7 @@ import type { Database } from "@/lib/database.types";
 import type { WeekHistory } from "@/lib/accuracy";
 import { actualsByCategory } from "@/lib/settlement";
 import { plannedByCategory } from "@/lib/plan-board";
-import { getWeekKey, getWeekStart } from "@/lib/week";
+import { dayKeyInTz, weekStartKeyOf, zonedDayStart } from "@/lib/tz";
 
 type Client = SupabaseClient<Database>;
 
@@ -18,6 +18,7 @@ export async function getWeekHistory(
   supabase: Client,
   userId: string,
   targetWeekKey: string,
+  timeZone: string,
 ): Promise<WeekHistory[]> {
   const { data: items } = await supabase
     .from("planned_items")
@@ -28,7 +29,7 @@ export async function getWeekHistory(
 
   const itemsByWeek = new Map<string, typeof items>();
   for (const item of items) {
-    const weekKey = getWeekKey(new Date(`${item.day}T00:00:00`));
+    const weekKey = weekStartKeyOf(item.day);
     if (weekKey >= targetWeekKey) continue;
     const bucket = itemsByWeek.get(weekKey);
     if (bucket) {
@@ -40,8 +41,8 @@ export async function getWeekHistory(
   if (itemsByWeek.size === 0) return [];
 
   const weekKeys = [...itemsByWeek.keys()].sort();
-  const earliest = new Date(`${weekKeys[0]}T00:00:00`);
-  const end = new Date(`${targetWeekKey}T00:00:00`);
+  const earliest = zonedDayStart(weekKeys[0], timeZone);
+  const end = zonedDayStart(targetWeekKey, timeZone);
 
   const { data: entries } = await supabase
     .from("time_entries")
@@ -52,7 +53,9 @@ export async function getWeekHistory(
 
   const entriesByWeek = new Map<string, NonNullable<typeof entries>>();
   for (const entry of entries ?? []) {
-    const weekKey = getWeekKey(getWeekStart(new Date(entry.started_at)));
+    const weekKey = weekStartKeyOf(
+      dayKeyInTz(new Date(entry.started_at), timeZone),
+    );
     const bucket = entriesByWeek.get(weekKey);
     if (bucket) {
       bucket.push(entry);

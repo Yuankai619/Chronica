@@ -63,11 +63,14 @@ describe("summarizePeriod", () => {
 
 describe("monthlyRecordedTrend", () => {
   it("buckets recorded time by month", () => {
-    const trend = monthlyRecordedTrend([
-      entry("work", 100, new Date(2026, 0, 5, 9).toISOString()),
-      entry("work", 50, new Date(2026, 6, 5, 9).toISOString()),
-      entry("games", 500, new Date(2026, 6, 6, 9).toISOString()),
-    ]);
+    const trend = monthlyRecordedTrend(
+      [
+        entry("work", 100, "2026-01-05T09:00:00Z"),
+        entry("work", 50, "2026-07-05T09:00:00Z"),
+        entry("games", 500, "2026-07-06T09:00:00Z"),
+      ],
+      "UTC",
+    );
     expect(trend[0]).toBe(100);
     expect(trend[6]).toBe(550);
   });

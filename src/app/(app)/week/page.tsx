@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
+
 import { computeWeekSettlement } from "@/lib/settlement";
 import { formatDuration } from "@/lib/entries";
-import { plannedByCategory, plannedByDay, weekDayKeys } from "@/lib/plan-board";
+import { plannedByCategory, plannedByDay } from "@/lib/plan-board";
+import {
+  addDaysKey,
+  dayKeyInTz,
+  weekDayKeysOf,
+  weekStartKeyOf,
+  zonedDayStart,
+} from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 import { weekDayGaps } from "@/lib/unrecorded";
 import { SettlementTable } from "@/components/settlement-table";
 import { DayGaps } from "@/components/day-gaps";
@@ -11,18 +19,11 @@ import { Card } from "@/components/ui/card";
 
 export const metadata = { title: "Week — Chronica" };
 
-function parseWeekParam(raw: string | undefined): Date {
+function parseWeekParam(raw: string | undefined, todayKey: string): string {
   if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const parsed = new Date(`${raw}T00:00:00`);
-    if (!Number.isNaN(parsed.getTime())) return getWeekStart(parsed);
+    return weekStartKeyOf(raw);
   }
-  return getWeekStart(new Date());
-}
-
-function shiftWeek(weekStart: Date, weeks: number): string {
-  const d = new Date(weekStart);
-  d.setDate(d.getDate() + weeks * 7);
-  return getWeekKey(d);
+  return weekStartKeyOf(todayKey);
 }
 
 export default async function WeekPage({
@@ -31,11 +32,13 @@ export default async function WeekPage({
   searchParams: Promise<{ week?: string }>;
 }) {
   const { week } = await searchParams;
-  const weekStart = parseWeekParam(week);
-  const weekEnd = getWeekEnd(weekStart);
-  const weekKey = getWeekKey(weekStart);
-  const dayKeys = weekDayKeys(weekStart);
-  const isCurrentWeek = weekKey === getWeekKey(new Date());
+  const timeZone = await getUserTimeZone();
+  const todayKey = dayKeyInTz(new Date(), timeZone);
+  const weekKey = parseWeekParam(week, todayKey);
+  const dayKeys = weekDayKeysOf(weekKey);
+  const weekStart = zonedDayStart(weekKey, timeZone);
+  const weekEnd = zonedDayStart(addDaysKey(weekKey, 7), timeZone);
+  const isCurrentWeek = weekKey === weekStartKeyOf(todayKey);
 
   const supabase = await createClient();
 
@@ -72,7 +75,7 @@ export default async function WeekPage({
         <nav className="flex gap-3 text-sm">
           <Link
             className="text-muted hover:text-foreground"
-            href={`/week?week=${shiftWeek(weekStart, -1)}`}
+            href={`/week?week=${addDaysKey(weekKey, -7)}`}
           >
             ← Prev
           </Link>
@@ -81,7 +84,7 @@ export default async function WeekPage({
           </Link>
           <Link
             className="text-muted hover:text-foreground"
-            href={`/week?week=${shiftWeek(weekStart, 1)}`}
+            href={`/week?week=${addDaysKey(weekKey, 7)}`}
           >
             Next →
           </Link>
@@ -116,9 +119,10 @@ export default async function WeekPage({
       <div className="mt-10">
         <DayGaps
           gaps={weekDayGaps(
-            weekStart,
+            weekKey,
             entries ?? [],
             plannedByDay(items ?? []),
+            timeZone,
           )}
         />
       </div>

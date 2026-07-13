@@ -8,7 +8,8 @@ import { computeAccuracy, formatRatio } from "@/lib/accuracy";
 import { formatDuration } from "@/lib/entries";
 import { computeWeekSettlement } from "@/lib/settlement";
 import { formatSignedDuration } from "@/lib/settlement";
-import { getWeekEnd } from "@/lib/week";
+import { addDaysKey, zonedDayStart } from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 import { getWeekHistory } from "@/server/planning";
 import { plannedByCategory } from "@/lib/plan-board";
 
@@ -46,13 +47,12 @@ async function buildContext(
   supabase: Client,
   userId: string,
   reviewWeekKey: string,
+  timeZone: string,
 ): Promise<string> {
-  const weekStart = new Date(`${reviewWeekKey}T00:00:00`);
-  const weekEnd = getWeekEnd(weekStart);
-  const nextWeekKey = weekEnd.toISOString().slice(0, 10);
-
-  const nextWeekEnd = new Date(weekEnd);
-  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+  const weekStart = zonedDayStart(reviewWeekKey, timeZone);
+  const nextWeekKey = addDaysKey(reviewWeekKey, 7);
+  const weekEnd = zonedDayStart(nextWeekKey, timeZone);
+  const nextWeekEndKey = addDaysKey(reviewWeekKey, 14);
 
   const [
     { data: categories },
@@ -72,10 +72,10 @@ async function buildContext(
       .from("planned_items")
       .select("*")
       .gte("day", reviewWeekKey)
-      .lt("day", nextWeekEnd.toISOString().slice(0, 10)),
+      .lt("day", nextWeekEndKey),
     supabase.from("principles").select("*"),
     supabase.from("ai_memories").select("*").order("created_at"),
-    getWeekHistory(supabase, userId, nextWeekKey),
+    getWeekHistory(supabase, userId, nextWeekKey, timeZone),
   ]);
 
   const reviewItems = (plannedItems ?? []).filter((i) => i.day < nextWeekKey);
@@ -160,17 +160,19 @@ export async function runRetro(
   }
 
   // Never analyze an empty week (also enforced by the UI).
-  const reviewStart = new Date(`${reviewWeekKey}T00:00:00`);
+  const timeZone = await getUserTimeZone();
+  const reviewStart = zonedDayStart(reviewWeekKey, timeZone);
+  const reviewEnd = zonedDayStart(addDaysKey(reviewWeekKey, 7), timeZone);
   const { count } = await supabase
     .from("time_entries")
     .select("id", { count: "exact", head: true })
     .gte("started_at", reviewStart.toISOString())
-    .lt("started_at", getWeekEnd(reviewStart).toISOString());
+    .lt("started_at", reviewEnd.toISOString());
   if ((count ?? 0) === 0) {
     return { error: "Last week has no recorded entries to review." };
   }
 
-  const context = await buildContext(supabase, userId, reviewWeekKey);
+  const context = await buildContext(supabase, userId, reviewWeekKey, timeZone);
   const agent = buildAgent();
 
   let text: string;
