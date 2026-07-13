@@ -21,6 +21,7 @@ import type { TodoTask } from "@/lib/tasks";
 
 type TaskPickerTasks = TodoTask[] | null | undefined;
 import { TaskPicker } from "@/components/task-picker";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -91,7 +92,8 @@ function EntryForm({
           defaultValue={
             entry ? toLocalInputValue(new Date(entry.started_at)) : ""
           }
-          className="sm:w-56"
+          className="cursor-pointer sm:w-56"
+          onClick={(event) => event.currentTarget.showPicker?.()}
         />
         <Textarea
           name="note"
@@ -145,6 +147,7 @@ function EntryRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const category = categories.find((c) => c.id === entry.category_id);
   const startedAt = new Date(entry.started_at);
 
@@ -211,16 +214,24 @@ function EntryRow({
           variant="danger"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            if (!confirm("Delete this entry?")) return;
-            startTransition(async () => {
-              await deleteEntry(entry.id);
-            });
-          }}
+          onClick={() =>
+            confirm.request(() =>
+              startTransition(async () => {
+                await deleteEntry(entry.id);
+              }),
+            )
+          }
         >
           Delete
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirm.open}
+        title="Delete this entry?"
+        description="The recorded time is removed from all statistics."
+        onConfirm={confirm.confirm}
+        onCancel={confirm.cancel}
+      />
     </li>
   );
 }

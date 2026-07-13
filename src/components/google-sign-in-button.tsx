@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export function GoogleSignInButton() {
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function signIn() {
     setPending(true);
@@ -18,13 +19,16 @@ export function GoogleSignInButton() {
     });
     if (error) {
       setPending(false);
-      alert(`Sign-in failed: ${error.message}`);
+      setError(`Sign-in failed: ${error.message}`);
     }
   }
 
   return (
-    <Button size="lg" onClick={signIn} disabled={pending}>
-      {pending ? "Redirecting…" : "Sign in with Google"}
-    </Button>
+    <div className="flex flex-col items-center gap-2">
+      <Button size="lg" onClick={signIn} disabled={pending}>
+        {pending ? "Redirecting…" : "Sign in with Google"}
+      </Button>
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+    </div>
   );
 }
