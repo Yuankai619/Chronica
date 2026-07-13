@@ -58,7 +58,12 @@ export default async function TasksPage({
     .delete()
     .lt("completed_at", todayStart.toISOString());
 
-  const today = dayKey(new Date());
+  // Include tasks due today ± 1 day: the Graph API may return dates in
+  // UTC while the server runs in UTC — a task due "today" in UTC+8 can
+  // appear as yesterday or tomorrow in UTC.
+  const windowEnd = new Date();
+  windowEnd.setDate(windowEnd.getDate() + 1);
+  const windowEndKey = dayKey(windowEnd);
 
   const [{ data: entries }, { data: completed }, allTasks] = await Promise.all([
     supabase
@@ -99,10 +104,12 @@ export default async function TasksPage({
     }
   }
 
-  // Add tasks due today that don't already have time entries.
-  const dueTodayTasks = (allTasks ?? []).filter(
-    (t) => dueDateKey(t.dueDate) === today,
-  );
+  // Add tasks due today or earlier (overdue) that don't already have
+  // time entries. Use windowEndKey to cover timezone differences.
+  const dueTodayTasks = (allTasks ?? []).filter((t) => {
+    const dk = dueDateKey(t.dueDate);
+    return dk !== null && dk <= windowEndKey;
+  });
   for (const t of dueTodayTasks) {
     if (tasks.has(t.id)) continue;
     tasks.set(t.id, {
