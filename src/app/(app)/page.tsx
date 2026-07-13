@@ -4,11 +4,7 @@ import { getReconciledSession } from "@/server/timer";
 import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
 import { formatDuration } from "@/lib/entries";
-import {
-  DEFAULT_DAILY_TARGET_MINUTES,
-  recordedByDay,
-  dayKey,
-} from "@/lib/unrecorded";
+import { recordedByDay, dayKey } from "@/lib/unrecorded";
 import { Card } from "@/components/ui/card";
 
 export default async function Home() {
@@ -19,12 +15,13 @@ export default async function Home() {
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const todayKey = dayKey(new Date());
 
   const [
     { data: categories },
     session,
     { data: todayEntries },
-    { data: settings },
+    { data: plannedToday },
   ] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
     getReconciledSession(supabase, user!.id),
@@ -33,18 +30,20 @@ export default async function Home() {
       .select("*")
       .gte("started_at", todayStart.toISOString()),
     supabase
-      .from("user_settings")
+      .from("planned_items")
       .select("*")
-      .eq("user_id", user!.id)
-      .maybeSingle(),
+      .eq("day", todayKey)
+      .order("position"),
   ]);
 
   const tasks = await getOpenTasks(supabase, user!.id);
 
-  const target = settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES;
-  const recordedToday =
-    recordedByDay(todayEntries ?? []).get(dayKey(new Date())) ?? 0;
-  const unrecorded = Math.max(0, target - recordedToday);
+  const plannedMinutes = (plannedToday ?? []).reduce(
+    (s, i) => s + i.expected_minutes,
+    0,
+  );
+  const recordedToday = recordedByDay(todayEntries ?? []).get(todayKey) ?? 0;
+  const remaining = Math.max(0, plannedMinutes - recordedToday);
 
   return (
     <main>
@@ -54,6 +53,7 @@ export default async function Home() {
           categories={sortCategories(categories ?? [])}
           session={session}
           tasks={tasks}
+          plannedToday={plannedToday ?? []}
         />
         <div className="order-first grid grid-cols-2 gap-3 lg:order-0 lg:grid-cols-1 lg:content-start">
           <Card>
@@ -63,11 +63,11 @@ export default async function Home() {
             </p>
           </Card>
           <Card>
-            <p className="microlabel mb-1">Unrecorded</p>
+            <p className="microlabel mb-1">Planned remaining</p>
             <p
-              className={`font-mono text-2xl font-semibold tabular-nums ${unrecorded > 0 ? "text-accent" : ""}`}
+              className={`font-mono text-2xl font-semibold tabular-nums ${remaining > 0 ? "text-accent" : ""}`}
             >
-              {formatDuration(unrecorded)}
+              {formatDuration(remaining)}
             </p>
           </Card>
         </div>

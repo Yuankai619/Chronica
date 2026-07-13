@@ -10,6 +10,9 @@ import { Input, Select } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import type { TodoTask } from "@/lib/tasks";
 import { TaskPicker } from "@/components/task-picker";
+import type { PlannedItem } from "@/lib/plan-board";
+import { formatDuration } from "@/lib/entries";
+import { Badge } from "@/components/ui/badge";
 
 type TimerSession = Tables<"timer_sessions">;
 
@@ -204,14 +207,65 @@ function RunningTimer({
   );
 }
 
+function QuickStart({
+  plannedToday,
+  categories,
+}: {
+  plannedToday: PlannedItem[];
+  categories: Category[];
+}) {
+  const [pending, startTransition] = useTransition();
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  if (plannedToday.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <CardTitle className="mb-0">Planned today — tap to start</CardTitle>
+      <div className="flex flex-wrap gap-2">
+        {plannedToday.map((item) => {
+          const category = categoryById.get(item.category_id);
+          if (!category) return null;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const formData = new FormData();
+                  formData.set("category_id", item.category_id);
+                  formData.set(
+                    "expected_minutes",
+                    String(item.expected_minutes),
+                  );
+                  await startTimer(formData);
+                })
+              }
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-sm transition-colors hover:border-accent-dim disabled:opacity-50"
+            >
+              <Badge variant={category.category_group}>{category.name}</Badge>
+              <span className="font-mono text-xs text-accent tabular-nums">
+                {formatDuration(item.expected_minutes)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function TimerPanel({
   categories,
   session,
   tasks,
+  plannedToday,
 }: {
   categories: Category[];
   session: TimerSession | null;
   tasks: TodoTask[] | null;
+  plannedToday: PlannedItem[];
 }) {
   const categoryName =
     (session && categories.find((c) => c.id === session.category_id)?.name) ??
@@ -228,6 +282,7 @@ export function TimerPanel({
         </CardTitle>
         <StartForm categories={categories} tasks={tasks} />
       </section>
+      <QuickStart plannedToday={plannedToday} categories={categories} />
     </div>
   );
 }

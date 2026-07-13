@@ -11,7 +11,7 @@ export function SettlementTable({
   if (settlement.rows.length === 0) {
     return (
       <p className="text-sm text-muted">
-        Nothing recorded or budgeted this week yet.
+        Nothing recorded or planned this week yet.
       </p>
     );
   }
@@ -22,7 +22,7 @@ export function SettlementTable({
         <thead>
           <tr className="border-b border-hairline text-left">
             <th className="microlabel py-2 font-normal">Category</th>
-            <th className="microlabel py-2 text-right font-normal">Budget</th>
+            <th className="microlabel py-2 text-right font-normal">Planned</th>
             <th className="microlabel py-2 text-right font-normal">Actual</th>
             <th className="microlabel py-2 text-right font-normal">Δ</th>
           </tr>
@@ -37,9 +37,9 @@ export function SettlementTable({
                 </Badge>
               </td>
               <td className="py-2.5 text-right font-mono text-muted tabular-nums">
-                {row.budgetMinutes === null
+                {row.plannedMinutes === null
                   ? "—"
-                  : formatDuration(row.budgetMinutes)}
+                  : formatDuration(row.plannedMinutes)}
               </td>
               <td className="py-2.5 text-right font-mono tabular-nums">
                 {formatDuration(row.actualMinutes)}

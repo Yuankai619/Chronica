@@ -1,8 +1,14 @@
-import type { PastWeek } from "@/lib/planning";
-import { actualsByCategory } from "@/lib/settlement";
+export interface WeekHistory {
+  /** Monday key of the week. */
+  weekKey: string;
+  /** Total planned minutes per category (from the day board). */
+  planned: Map<string, number>;
+  /** Total actual minutes per category. */
+  actual: Map<string, number>;
+}
 
 export interface CategoryAccuracy {
-  /** Average actual/budget ratio over planned weeks; 1 = on budget. */
+  /** Average actual/planned ratio over planned weeks; 1 = on plan. */
   averageRatio: number;
   /** Number of planned weeks contributing to the average. */
   sampleWeeks: number;
@@ -10,25 +16,23 @@ export interface CategoryAccuracy {
 
 /**
  * Historical estimation accuracy per category: mean of the per-week
- * actual/(budget+rollover) ratios across planned weeks with a positive
- * budget. Ratio > 1 means the user habitually overspends the budget.
+ * actual/planned ratios across weeks where the category had a plan.
+ * Ratio > 1 means the user habitually exceeds the plan.
  */
 export function computeAccuracy(
-  pastWeeks: PastWeek[],
+  weeks: WeekHistory[],
 ): Map<string, CategoryAccuracy> {
   const ratios = new Map<string, number[]>();
 
-  for (const week of pastWeeks) {
-    const actuals = actualsByCategory(week.entries);
-    for (const item of week.items) {
-      const budget = item.budgeted_minutes + item.rollover_minutes;
-      if (budget <= 0) continue;
-      const ratio = (actuals.get(item.category_id) ?? 0) / budget;
-      const list = ratios.get(item.category_id);
+  for (const week of weeks) {
+    for (const [categoryId, plannedMinutes] of week.planned) {
+      if (plannedMinutes <= 0) continue;
+      const ratio = (week.actual.get(categoryId) ?? 0) / plannedMinutes;
+      const list = ratios.get(categoryId);
       if (list) {
         list.push(ratio);
       } else {
-        ratios.set(item.category_id, [ratio]);
+        ratios.set(categoryId, [ratio]);
       }
     }
   }
@@ -43,14 +47,14 @@ export function computeAccuracy(
   return accuracy;
 }
 
-/** 1.52 → "152%"; used for the planning-page accuracy column. */
+/** 1.52 → "152%". */
 export function formatRatio(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
 /**
  * A plan is likely overestimated when history says the category runs
- * meaningfully over budget (avg ratio ≥ threshold over ≥ 2 weeks).
+ * meaningfully over plan (avg ratio ≥ threshold over ≥ 2 weeks).
  */
 export function isLikelyOverrun(
   accuracy: CategoryAccuracy | undefined,

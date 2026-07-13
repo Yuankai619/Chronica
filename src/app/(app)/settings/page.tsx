@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_CAP_MINUTES } from "@/lib/timer";
-import { DEFAULT_DAILY_TARGET_MINUTES } from "@/lib/unrecorded";
 import { SettingsForm } from "@/components/settings-form";
 import { MicrosoftLinkCard } from "@/components/microsoft-link-card";
 import { PrinciplesCard } from "@/components/principles-card";
@@ -39,12 +38,9 @@ export default async function SettingsPage({
   return (
     <main>
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
-      <div className="flex flex-col gap-6">
+      <div className="grid max-w-4xl gap-6 lg:grid-cols-2">
         <SettingsForm
           timerCapMinutes={settings?.timer_cap_minutes ?? DEFAULT_CAP_MINUTES}
-          dailyTargetMinutes={
-            settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES
-          }
         />
         <PrinciplesCard principles={principles ?? []} />
         <MicrosoftLinkCard

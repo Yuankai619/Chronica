@@ -2,68 +2,68 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import {
-  computeBalanceContext,
-  type CategoryBalance,
-  type PastWeek,
-} from "@/lib/planning";
-import { getWeekEnd } from "@/lib/week";
+import type { WeekHistory } from "@/lib/accuracy";
+import { actualsByCategory } from "@/lib/settlement";
+import { plannedByCategory } from "@/lib/plan-board";
+import { getWeekKey, getWeekStart } from "@/lib/week";
 
 type Client = SupabaseClient<Database>;
 
-/** Loads all planned weeks strictly before `targetWeekKey`. */
-export async function getPastWeeks(
+/**
+ * Planned-vs-actual history per week (Monday keys) for all weeks strictly
+ * before `targetWeekKey`, built from the day-based planning board. Only
+ * weeks that had at least one planned item are included.
+ */
+export async function getWeekHistory(
   supabase: Client,
   userId: string,
   targetWeekKey: string,
-): Promise<PastWeek[]> {
-  const { data: plans } = await supabase
-    .from("weekly_plans")
+): Promise<WeekHistory[]> {
+  const { data: items } = await supabase
+    .from("planned_items")
     .select("*")
     .eq("user_id", userId)
-    .lt("week_start", targetWeekKey)
-    .order("week_start", { ascending: false });
+    .lt("day", targetWeekKey);
+  if (!items || items.length === 0) return [];
 
-  if (!plans || plans.length === 0) return [];
+  const itemsByWeek = new Map<string, typeof items>();
+  for (const item of items) {
+    const weekKey = getWeekKey(new Date(`${item.day}T00:00:00`));
+    if (weekKey >= targetWeekKey) continue;
+    const bucket = itemsByWeek.get(weekKey);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      itemsByWeek.set(weekKey, [item]);
+    }
+  }
+  if (itemsByWeek.size === 0) return [];
 
-  const { data: items } = await supabase
-    .from("weekly_plan_items")
-    .select("*")
-    .in(
-      "plan_id",
-      plans.map((p) => p.id),
-    );
+  const weekKeys = [...itemsByWeek.keys()].sort();
+  const earliest = new Date(`${weekKeys[0]}T00:00:00`);
+  const end = new Date(`${targetWeekKey}T00:00:00`);
 
-  const earliest = plans[plans.length - 1].week_start;
-  const lastWeekEnd = getWeekEnd(new Date(`${targetWeekKey}T00:00:00`));
   const { data: entries } = await supabase
     .from("time_entries")
     .select("*")
     .eq("user_id", userId)
-    .gte("started_at", new Date(`${earliest}T00:00:00`).toISOString())
-    .lt("started_at", lastWeekEnd.toISOString());
+    .gte("started_at", earliest.toISOString())
+    .lt("started_at", end.toISOString());
 
-  return plans.map((plan) => {
-    const weekStart = new Date(`${plan.week_start}T00:00:00`);
-    const weekEnd = getWeekEnd(weekStart);
-    return {
-      plan,
-      items: (items ?? []).filter((i) => i.plan_id === plan.id),
-      entries: (entries ?? []).filter((e) => {
-        const started = new Date(e.started_at);
-        return started >= weekStart && started < weekEnd;
-      }),
-    };
-  });
-}
+  const entriesByWeek = new Map<string, NonNullable<typeof entries>>();
+  for (const entry of entries ?? []) {
+    const weekKey = getWeekKey(getWeekStart(new Date(entry.started_at)));
+    const bucket = entriesByWeek.get(weekKey);
+    if (bucket) {
+      bucket.push(entry);
+    } else {
+      entriesByWeek.set(weekKey, [entry]);
+    }
+  }
 
-/** Per-category balance context for planning the target week. */
-export async function getBalanceContext(
-  supabase: Client,
-  userId: string,
-  targetWeekKey: string,
-): Promise<Map<string, CategoryBalance>> {
-  return computeBalanceContext(
-    await getPastWeeks(supabase, userId, targetWeekKey),
-  );
+  return weekKeys.map((weekKey) => ({
+    weekKey,
+    planned: plannedByCategory(itemsByWeek.get(weekKey)!),
+    actual: actualsByCategory(entriesByWeek.get(weekKey) ?? []),
+  }));
 }

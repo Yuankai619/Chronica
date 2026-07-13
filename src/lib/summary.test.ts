@@ -32,6 +32,7 @@ function entry(
     needs_confirmation: false,
     todo_task_id: null,
     todo_task_title: null,
+    todo_list_id: null,
     created_at: "",
     updated_at: "",
   };

@@ -26,7 +26,7 @@ export function PrinciplesCard({ principles }: { principles: Principle[] }) {
   }
 
   return (
-    <Card className="max-w-md">
+    <Card>
       <CardTitle>Personal principles</CardTitle>
       <p className="mb-3 text-sm text-muted">
         Free-text rules for your time use (e.g. “stop working when tired”). The

@@ -7,9 +7,11 @@ import { Card, CardTitle } from "@/components/ui/card";
 export function RetroCard({
   reviewWeekKey,
   initialContent,
+  disabled = false,
 }: {
   reviewWeekKey: string;
   initialContent: string | null;
+  disabled?: boolean;
 }) {
   const [content, setContent] = useState(initialContent);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,12 @@ export function RetroCard({
         <CardTitle className="mb-0">
           AI retro · week of {reviewWeekKey}
         </CardTitle>
-        <Button variant="outline" size="sm" disabled={running} onClick={run}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={running || disabled}
+          onClick={run}
+        >
           {running ? "Analyzing…" : content ? "Re-run" : "Run AI retro"}
         </Button>
       </div>
@@ -57,8 +64,9 @@ export function RetroCard({
         </pre>
       ) : (
         <p className="mt-3 text-sm text-muted">
-          Reviews last week against budgets, your real pace, and your
-          principles. Manual only — nothing runs automatically.
+          {disabled
+            ? "Last week has no recorded entries — the retro needs data to review."
+            : "Reviews last week against your plan, real pace, and principles. Manual only — nothing runs automatically."}
         </p>
       )}
     </Card>
