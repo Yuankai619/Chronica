@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
-import { isUrlTitle } from "@/lib/tasks";
+import { isUrlTitle, dueDateKey } from "@/lib/tasks";
+import { dayKey } from "@/lib/unrecorded";
+import { getOpenTasks } from "@/server/microsoft";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
 import { TaskCompleteCheckbox } from "@/components/task-complete-checkbox";
@@ -44,6 +46,9 @@ export default async function TasksPage({
   const showCompleted = tab === "completed";
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Completed-today rows expire after the day passes: purge, then read.
   const todayStart = new Date();
@@ -53,7 +58,9 @@ export default async function TasksPage({
     .delete()
     .lt("completed_at", todayStart.toISOString());
 
-  const [{ data: entries }, { data: completed }] = await Promise.all([
+  const today = dayKey(new Date());
+
+  const [{ data: entries }, { data: completed }, allTasks] = await Promise.all([
     supabase
       .from("time_entries")
       .select(
@@ -66,10 +73,12 @@ export default async function TasksPage({
       .from("completed_tasks")
       .select("*")
       .order("completed_at", { ascending: false }),
+    user ? getOpenTasks(supabase, user.id) : Promise.resolve(null),
   ]);
 
   const completedIds = new Set((completed ?? []).map((c) => c.task_id));
 
+  // Build task-cost map from time entries (existing logic).
   const tasks = new Map<string, TaskCost>();
   for (const entry of entries ?? []) {
     const id = entry.todo_task_id!;
@@ -90,16 +99,44 @@ export default async function TasksPage({
     }
   }
 
+  // Add tasks due today that don't already have time entries.
+  const dueTodayTasks = (allTasks ?? []).filter(
+    (t) => dueDateKey(t.dueDate) === today,
+  );
+  for (const t of dueTodayTasks) {
+    if (tasks.has(t.id)) continue;
+    tasks.set(t.id, {
+      id: t.id,
+      title: t.title,
+      listId: t.listId,
+      totalMinutes: 0,
+      entryCount: 0,
+      lastActivity: "",
+    });
+  }
+
   const rows = [...tasks.values()]
     .filter((t) => !completedIds.has(t.id))
-    .toSorted((a, b) => b.totalMinutes - a.totalMinutes);
+    .filter((t) => {
+      // In the Open tab: show tasks with time entries OR due today.
+      if (showCompleted) return true;
+      const isDueToday = dueTodayTasks.some((d) => d.id === t.id);
+      return t.entryCount > 0 || isDueToday;
+    })
+    .toSorted((a, b) => {
+      // Due-today tasks with no time entries go to the bottom.
+      const aLinked = a.entryCount > 0;
+      const bLinked = b.entryCount > 0;
+      if (aLinked !== bLinked) return aLinked ? -1 : 1;
+      return b.totalMinutes - a.totalMinutes;
+    });
 
   return (
     <main>
       <h1 className="mb-2 text-xl font-semibold">Task time costs</h1>
       <p className="mb-5 text-sm text-muted">
-        Cumulative time per attached To Do task. Checking a task off syncs the
-        completion back to Microsoft.
+        Tasks due today and tasks with tracked time. Only tasks with time
+        entries can be checked off — others are read-only.
       </p>
 
       <div className="mb-6 flex gap-1 border-b border-hairline">
@@ -180,29 +217,46 @@ export default async function TasksPage({
               </tr>
             </thead>
             <tbody>
-              {rows.map((task) => (
-                <tr key={task.id} className="border-b border-hairline">
-                  <td className="py-2.5 pr-2">
-                    <TaskCompleteCheckbox
-                      taskId={task.id}
-                      listId={task.listId}
-                      title={task.title}
-                    />
-                  </td>
-                  <td className="py-2.5 pr-3 font-medium">
-                    <TaskTitle title={task.title} />
-                  </td>
-                  <td className="py-2.5 text-right font-mono text-accent tabular-nums">
-                    {formatDuration(task.totalMinutes)}
-                  </td>
-                  <td className="py-2.5 text-right font-mono text-muted tabular-nums">
-                    {task.entryCount}
-                  </td>
-                  <td className="py-2.5 text-right font-mono text-muted tabular-nums">
-                    {new Date(task.lastActivity).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((task) => {
+                const isLinked = task.entryCount > 0;
+                return (
+                  <tr
+                    key={task.id}
+                    className={cn(
+                      "border-b border-hairline",
+                      !isLinked && "opacity-70",
+                    )}
+                  >
+                    <td className="py-2.5 pr-2">
+                      <TaskCompleteCheckbox
+                        taskId={task.id}
+                        listId={task.listId}
+                        title={task.title}
+                        disabled={!isLinked}
+                      />
+                    </td>
+                    <td className="py-2.5 pr-3 font-medium">
+                      <TaskTitle title={task.title} />
+                      {!isLinked ? (
+                        <span className="ml-2 text-[0.65rem] tracking-wider text-muted uppercase">
+                          due today
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-accent tabular-nums">
+                      {isLinked ? formatDuration(task.totalMinutes) : "—"}
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+                      {isLinked ? task.entryCount : "—"}
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+                      {isLinked && task.lastActivity
+                        ? new Date(task.lastActivity).toLocaleDateString()
+                        : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
