@@ -224,7 +224,9 @@ function QuickStart({
       <CardTitle className="mb-0">Planned today — tap to start</CardTitle>
       <div className="flex flex-wrap gap-2">
         {plannedToday.map((item) => {
-          const category = categoryById.get(item.category_id);
+          const category = item.category_id
+            ? categoryById.get(item.category_id)
+            : undefined;
           if (!category) return null;
           return (
             <button
@@ -234,7 +236,7 @@ function QuickStart({
               onClick={() =>
                 startTransition(async () => {
                   const formData = new FormData();
-                  formData.set("category_id", item.category_id);
+                  formData.set("category_id", category.id);
                   formData.set(
                     "expected_minutes",
                     String(item.expected_minutes),

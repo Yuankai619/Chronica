@@ -235,7 +235,11 @@ function DayColumn({
             <ItemCard
               key={item.id}
               item={item}
-              category={categoryById.get(item.category_id)}
+              category={
+                item.category_id
+                  ? categoryById.get(item.category_id)
+                  : undefined
+              }
               onDelete={() => onDelete(item.id)}
             />
           ))}
@@ -395,7 +399,11 @@ export function PlanBoard({
           {activeItem ? (
             <ItemCard
               item={activeItem}
-              category={categoryById.get(activeItem.category_id)}
+              category={
+                activeItem.category_id
+                  ? categoryById.get(activeItem.category_id)
+                  : undefined
+              }
               overlay
             />
           ) : null}
