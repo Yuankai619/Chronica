@@ -8,7 +8,7 @@ import {
   unarchiveCategory,
   updateCategory,
 } from "@/app/(app)/categories/actions";
-import type { Category } from "@/lib/categories";
+import { PRESET_COLORS, type Category } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -23,9 +23,11 @@ function CategoryForm({
   onDone?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [color, setColor] = useState(category?.color ?? "");
   const [pending, startTransition] = useTransition();
 
   function submit(formData: FormData) {
+    formData.set("color", color);
     startTransition(async () => {
       const result = category
         ? await updateCategory(category.id, formData)
@@ -48,6 +50,38 @@ function CategoryForm({
         maxLength={100}
         required
       />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted">Color</span>
+        <button
+          type="button"
+          onClick={() => setColor("")}
+          className={`cursor-pointer rounded-md border px-2 py-1 text-xs ${color === "" ? "border-foreground text-foreground" : "border-hairline text-muted"}`}
+        >
+          Auto
+        </button>
+        {PRESET_COLORS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            aria-label={`Use color ${preset}`}
+            onClick={() => setColor(preset)}
+            className={`size-6 cursor-pointer rounded-md border-2 ${color === preset ? "border-foreground" : "border-transparent"}`}
+            style={{ backgroundColor: preset }}
+          />
+        ))}
+        <input
+          type="color"
+          aria-label="Custom color"
+          value={color || "#f0b429"}
+          onChange={(event) => setColor(event.target.value)}
+          className="size-7 cursor-pointer rounded-md border border-hairline bg-panel"
+        />
+        {color ? (
+          <span className="font-mono text-xs" style={{ color }}>
+            {color}
+          </span>
+        ) : null}
+      </div>
       <Textarea
         name="description"
         placeholder="Description (context for the AI; only shown here)"
@@ -89,7 +123,11 @@ function CategoryRow({ category }: { category: Category }) {
     >
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <CategoryBadge id={category.id} name={category.name} />
+          <CategoryBadge
+            id={category.id}
+            name={category.name}
+            color={category.color}
+          />
           {archived ? <Badge>archived</Badge> : null}
         </div>
         {category.description ? (

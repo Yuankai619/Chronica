@@ -287,7 +287,11 @@ function QuickStart({
               }
               className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-sm transition-colors hover:border-accent-dim disabled:opacity-50"
             >
-              <CategoryBadge id={category.id} name={category.name} />
+              <CategoryBadge
+                id={category.id}
+                name={category.name}
+                color={category.color}
+              />
               <span className="font-mono text-xs text-accent tabular-nums">
                 {formatDuration(item.expected_minutes)}
               </span>

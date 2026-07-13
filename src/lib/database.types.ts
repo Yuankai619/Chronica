@@ -239,6 +239,7 @@ export interface Database {
           id: string;
           user_id: string;
           name: string;
+          color: string | null;
           description: string | null;
           archived_at: string | null;
           created_at: string;
@@ -248,6 +249,7 @@ export interface Database {
           id?: string;
           user_id: string;
           name: string;
+          color?: string | null;
           description?: string | null;
           archived_at?: string | null;
           created_at?: string;
@@ -257,6 +259,7 @@ export interface Database {
           id?: string;
           user_id?: string;
           name?: string;
+          color?: string | null;
           description?: string | null;
           archived_at?: string | null;
           created_at?: string;

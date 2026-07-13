@@ -119,6 +119,7 @@ export default async function SummaryPage({
   const compareRows: WeekCompareRow[] = (categories ?? []).map((c) => ({
     id: c.id,
     name: c.name,
+    color: c.color,
     plannedMinutes: weekPlanned.get(c.id) ?? 0,
     actualMinutes: weekActual.get(c.id) ?? 0,
   }));
@@ -142,6 +143,7 @@ export default async function SummaryPage({
     .map((c) => ({
       id: c.id,
       name: c.name,
+      color: c.color,
       totals: rangeTotals.get(c.id)!,
     }));
 
@@ -282,6 +284,7 @@ export default async function SummaryPage({
                   <CategoryBadge
                     id={row.category.id}
                     name={row.category.name}
+                    color={row.category.color}
                   />
                 </td>
                 <td className="py-2.5 text-right font-mono tabular-nums">

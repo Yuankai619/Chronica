@@ -130,7 +130,11 @@ export default async function PlanningPage({
                 key={row.category.id}
                 className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
               >
-                <CategoryBadge id={row.category.id} name={row.category.name} />
+                <CategoryBadge
+                  id={row.category.id}
+                  name={row.category.name}
+                  color={row.category.color}
+                />
                 <span className="font-mono text-xs text-muted tabular-nums">
                   {formatDuration(row.actualMinutes)} /{" "}
                   {formatDuration(row.plannedMinutes)}
