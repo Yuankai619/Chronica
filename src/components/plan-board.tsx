@@ -19,11 +19,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, X } from "lucide-react";
+import { CalendarClock, GripVertical, Plus, X } from "lucide-react";
 import {
   addPlannedItem,
   deletePlannedItem,
   movePlannedItem,
+  setPlannedItemCategory,
 } from "@/app/(app)/planning/actions";
 import type { Category } from "@/lib/categories";
 import { formatDuration } from "@/lib/entries";
@@ -48,17 +49,28 @@ function buildColumns(dayKeys: string[], items: PlannedItem[]): Columns {
   return columns;
 }
 
+function eventTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function ItemCard({
   item,
   category,
+  categories = [],
   onDelete,
   overlay = false,
 }: {
   item: PlannedItem;
   category: Category | undefined;
+  categories?: Category[];
   onDelete?: () => void;
   overlay?: boolean;
 }) {
+  const [assigning, startAssign] = useTransition();
+  const isCalendar = item.gcal_event_id !== null;
   const {
     attributes,
     listeners,
@@ -78,6 +90,7 @@ function ItemCard({
       }
       className={cn(
         "group flex touch-none items-start gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2 select-none",
+        isCalendar && "border-l-2 border-l-[#7cc0f5]",
         isDragging && "opacity-40",
         overlay && "shadow-xl shadow-black/50",
       )}
@@ -89,14 +102,52 @@ function ItemCard({
         aria-hidden
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm font-medium break-words">
-          {category?.name ?? "Unknown"}
-        </span>
-        <span className="flex items-center gap-1.5">
+        {isCalendar ? (
+          <>
+            <span className="flex items-center gap-1 text-[0.65rem] tracking-[0.08em] text-[#7cc0f5] uppercase">
+              <CalendarClock className="size-3" aria-hidden /> Calendar
+            </span>
+            <span className="text-sm font-medium break-words">
+              {item.title ?? "(untitled event)"}
+            </span>
+            {item.start_at && item.end_at ? (
+              <span className="font-mono text-xs text-muted tabular-nums">
+                {eventTime(item.start_at)}–{eventTime(item.end_at)}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-sm font-medium break-words">
+            {category?.name ?? "Unknown"}
+          </span>
+        )}
+        <span className="flex flex-wrap items-center gap-1.5">
           {category ? (
             <Badge variant={category.category_group}>
-              {category.category_group}
+              {isCalendar ? category.name : category.category_group}
             </Badge>
+          ) : isCalendar && !overlay ? (
+            <select
+              aria-label="Assign category"
+              defaultValue=""
+              disabled={assigning}
+              onPointerDown={(event) => event.stopPropagation()}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (!value) return;
+                startAssign(async () => {
+                  await setPlannedItemCategory(item.id, value);
+                });
+              }}
+              className="cursor-pointer rounded-sm border border-hairline bg-transparent px-1 py-0.5 text-[0.65rem] text-muted focus:outline-none"
+            >
+              <option value="">+ category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           ) : null}
           <span className="font-mono text-xs text-accent tabular-nums">
             {formatDuration(item.expected_minutes)}
@@ -240,6 +291,7 @@ function DayColumn({
                   ? categoryById.get(item.category_id)
                   : undefined
               }
+              categories={categories}
               onDelete={() => onDelete(item.id)}
             />
           ))}
