@@ -30,7 +30,11 @@ export function SettlementTable({
           {settlement.rows.map((row) => (
             <tr key={row.category.id} className="border-b border-hairline">
               <td className="py-2.5">
-                <CategoryBadge id={row.category.id} name={row.category.name} />
+                <CategoryBadge
+                  id={row.category.id}
+                  name={row.category.name}
+                  color={row.category.color}
+                />
               </td>
               <td className="py-2.5 text-right font-mono text-muted tabular-nums">
                 {row.plannedMinutes === null

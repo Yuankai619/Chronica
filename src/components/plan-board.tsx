@@ -144,7 +144,11 @@ function ItemCard({
               ))}
             </select>
           ) : category ? (
-            <CategoryBadge id={category.id} name={category.name} />
+            <CategoryBadge
+              id={category.id}
+              name={category.name}
+              color={category.color}
+            />
           ) : null}
           <span className="font-mono text-xs text-accent tabular-nums">
             {formatDuration(item.expected_minutes)}

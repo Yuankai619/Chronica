@@ -36,16 +36,32 @@ export function categoryVariant(id: string): BadgeProps["variant"] {
   return `c${categoryPaletteIndex(id)}` as BadgeProps["variant"];
 }
 
-/** Convenience: a category name badge in its stable color. */
+/**
+ * A category name badge: uses the user-chosen color when set, otherwise
+ * the stable auto palette.
+ */
 export function CategoryBadge({
   id,
   name,
+  color = null,
   className,
 }: {
   id: string;
   name: string;
+  color?: string | null;
   className?: string;
 }) {
+  if (color) {
+    return (
+      <Badge
+        variant="default"
+        className={className}
+        style={{ color, borderColor: `${color}66` }}
+      >
+        {name}
+      </Badge>
+    );
+  }
   return (
     <Badge variant={categoryVariant(id)} className={className}>
       {name}

@@ -11,6 +11,7 @@ function category(partial: Partial<Category>): Category {
     id: "id",
     user_id: "user",
     name: "Name",
+    color: null,
     description: null,
     archived_at: null,
     created_at: "",
@@ -23,10 +24,12 @@ describe("parseCategoryInput", () => {
   it("accepts a valid input and trims fields", () => {
     const result = parseCategoryInput({
       name: "  Reading ",
+      color: "#F0B429",
       description: "  books  ",
     });
     expect(result.ok && result.input).toEqual({
       name: "Reading",
+      color: "#f0b429",
       description: "books",
     });
   });
@@ -34,13 +37,16 @@ describe("parseCategoryInput", () => {
   it("normalizes an empty description to null", () => {
     const result = parseCategoryInput({
       name: "Reading",
+      color: "",
       description: "   ",
     });
     expect(result.ok ? result.input.description : undefined).toBeNull();
   });
 
   it("rejects an empty name", () => {
-    expect(parseCategoryInput({ name: " ", description: "" }).ok).toBe(false);
+    expect(
+      parseCategoryInput({ name: " ", color: "", description: "" }).ok,
+    ).toBe(false);
   });
 });
 

@@ -4,18 +4,36 @@ export type Category = Tables<"categories">;
 
 export interface CategoryInput {
   name: string;
+  color: string | null;
   description: string | null;
 }
+
+/** Preset swatches offered in the category form. */
+export const PRESET_COLORS = [
+  "#f0b429",
+  "#7cc0f5",
+  "#6fd29c",
+  "#d9a1e0",
+  "#eba9a1",
+  "#8fd5e0",
+] as const;
 
 /** Validates raw form values; returns the parsed input or an error message. */
 export function parseCategoryInput(values: {
   name: unknown;
+  color: unknown;
   description: unknown;
 }): { ok: true; input: CategoryInput } | { ok: false; error: string } {
   const name = typeof values.name === "string" ? values.name.trim() : "";
   if (name.length === 0) return { ok: false, error: "Name is required." };
   if (name.length > 100)
     return { ok: false, error: "Name must be at most 100 characters." };
+
+  const rawColor =
+    typeof values.color === "string" ? values.color.trim().toLowerCase() : "";
+  if (rawColor !== "" && !/^#[0-9a-f]{6}$/.test(rawColor)) {
+    return { ok: false, error: "Color must be a hex value like #f0b429." };
+  }
 
   const rawDescription =
     typeof values.description === "string" ? values.description.trim() : "";
@@ -24,6 +42,7 @@ export function parseCategoryInput(values: {
     ok: true,
     input: {
       name,
+      color: rawColor === "" ? null : rawColor,
       description: rawDescription.length > 0 ? rawDescription : null,
     },
   };

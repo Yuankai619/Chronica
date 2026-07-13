@@ -18,6 +18,7 @@ function category(id: string): Category {
     id,
     user_id: "u",
     name: id,
+    color: null,
     description: null,
     archived_at: null,
     created_at: "",

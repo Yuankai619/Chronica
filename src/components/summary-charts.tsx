@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export interface WeekCompareRow {
   id: string;
   name: string;
+  color: string | null;
   plannedMinutes: number;
   actualMinutes: number;
 }
@@ -15,6 +16,7 @@ export interface WeekCompareRow {
 export interface RangeRow {
   id: string;
   name: string;
+  color: string | null;
   /** Total minutes over the last 30 / 90 / 180 / 365 days. */
   totals: [number, number, number, number];
 }
@@ -61,11 +63,13 @@ function ToggleGroup<T extends string>({
 function BarRow({
   id,
   name,
+  color,
   bars,
   max,
 }: {
   id: string;
   name: string;
+  color: string | null;
   bars: { minutes: number; solid: boolean }[];
   max: number;
 }) {
@@ -74,6 +78,7 @@ function BarRow({
       <CategoryBadge
         id={id}
         name={name}
+        color={color}
         className="justify-self-start break-words whitespace-normal"
       />
       <div className="flex flex-col gap-1">
@@ -149,6 +154,7 @@ export function WeekCompareChart({ rows }: { rows: WeekCompareRow[] }) {
             key={row.id}
             id={row.id}
             name={row.name}
+            color={row.color}
             max={max}
             bars={[
               ...(mode !== "actual"
@@ -204,6 +210,7 @@ export function CategoryAverageChart({ rows }: { rows: RangeRow[] }) {
               key={row.id}
               id={row.id}
               name={row.name}
+              color={row.color}
               max={max}
               bars={[{ minutes: row.average, solid: true }]}
             />

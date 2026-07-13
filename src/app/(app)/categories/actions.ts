@@ -24,6 +24,7 @@ export async function createCategory(
 
   const parsed = parseCategoryInput({
     name: formData.get("name"),
+    color: formData.get("color"),
     description: formData.get("description"),
   });
   if (!parsed.ok) return { error: parsed.error };
@@ -45,6 +46,7 @@ export async function updateCategory(
 
   const parsed = parseCategoryInput({
     name: formData.get("name"),
+    color: formData.get("color"),
     description: formData.get("description"),
   });
   if (!parsed.ok) return { error: parsed.error };
