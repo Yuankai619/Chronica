@@ -20,9 +20,16 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
     return { error: "Timer cap must be at least 15 minutes." };
   }
 
+  const timezone = String(formData.get("timezone") ?? "Asia/Taipei");
+  // Basic validation: must look like an IANA timezone (Region/City).
+  if (!/^[A-Za-z_]+\/[A-Za-z_+/-]+$/.test(timezone) && timezone !== "UTC") {
+    return { error: "Invalid timezone." };
+  }
+
   const { error } = await supabase.from("user_settings").upsert({
     user_id: user.id,
     timer_cap_minutes: cap,
+    timezone,
   });
   if (error) return { error: error.message };
 

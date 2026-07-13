@@ -46,6 +46,16 @@ function EntryForm({
     if ((formData.get("started_at") as string) === "") {
       formData.set("started_at", toLocalInputValue(new Date()));
     }
+    // Convert the datetime-local value (which is in the client's local
+    // timezone without offset) to an ISO string so the server receives
+    // unambiguous UTC regardless of server timezone.
+    const raw = formData.get("started_at") as string;
+    if (raw) {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) {
+        formData.set("started_at", d.toISOString());
+      }
+    }
     startTransition(async () => {
       const result = entry
         ? await updateEntry(entry.id, formData)

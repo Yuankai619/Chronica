@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
 import { isUrlTitle, dueDateKey } from "@/lib/tasks";
-import { dayKey } from "@/lib/unrecorded";
+import { shiftedDayKey } from "@/lib/timezone";
 import { getOpenTasks } from "@/server/microsoft";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
@@ -50,6 +50,14 @@ export default async function TasksPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Fetch user's timezone setting (default Asia/Taipei).
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("timezone")
+    .eq("user_id", user!.id)
+    .maybeSingle();
+  const tz = settings?.timezone ?? "Asia/Taipei";
+
   // Completed-today rows expire after the day passes: purge, then read.
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -58,7 +66,8 @@ export default async function TasksPage({
     .delete()
     .lt("completed_at", todayStart.toISOString());
 
-  const today = dayKey(new Date());
+  // Use the user's timezone to determine "today" for task filtering.
+  const windowEndKey = shiftedDayKey(1, tz);
 
   const [{ data: entries }, { data: completed }, allTasks] = await Promise.all([
     supabase
@@ -99,10 +108,12 @@ export default async function TasksPage({
     }
   }
 
-  // Add tasks due today that don't already have time entries.
-  const dueTodayTasks = (allTasks ?? []).filter(
-    (t) => dueDateKey(t.dueDate) === today,
-  );
+  // Add tasks due today or earlier (overdue) that don't already have
+  // time entries. Use windowEndKey to cover timezone differences.
+  const dueTodayTasks = (allTasks ?? []).filter((t) => {
+    const dk = dueDateKey(t.dueDate);
+    return dk !== null && dk <= windowEndKey;
+  });
   for (const t of dueTodayTasks) {
     if (tasks.has(t.id)) continue;
     tasks.set(t.id, {

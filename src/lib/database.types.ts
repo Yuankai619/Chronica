@@ -215,6 +215,7 @@ export interface Database {
           user_id: string;
           timer_cap_minutes: number;
           daily_target_minutes: number;
+          timezone: string;
           created_at: string;
           updated_at: string;
         };
@@ -222,6 +223,7 @@ export interface Database {
           user_id: string;
           timer_cap_minutes?: number;
           daily_target_minutes?: number;
+          timezone?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -229,6 +231,7 @@ export interface Database {
           user_id?: string;
           timer_cap_minutes?: number;
           daily_target_minutes?: number;
+          timezone?: string;
           created_at?: string;
           updated_at?: string;
         };
