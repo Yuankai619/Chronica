@@ -4,7 +4,6 @@
  * keeping the shape below.
  */
 
-export type CategoryGroup = "core" | "supportive" | "social" | "rest";
 export type EntrySource = "timer" | "manual";
 
 export interface Database {
@@ -237,7 +236,6 @@ export interface Database {
           id: string;
           user_id: string;
           name: string;
-          category_group: CategoryGroup;
           description: string | null;
           archived_at: string | null;
           created_at: string;
@@ -247,7 +245,6 @@ export interface Database {
           id?: string;
           user_id: string;
           name: string;
-          category_group: CategoryGroup;
           description?: string | null;
           archived_at?: string | null;
           created_at?: string;
@@ -257,7 +254,6 @@ export interface Database {
           id?: string;
           user_id?: string;
           name?: string;
-          category_group?: CategoryGroup;
           description?: string | null;
           archived_at?: string | null;
           created_at?: string;
@@ -356,7 +352,6 @@ export interface Database {
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
-      category_group: CategoryGroup;
       entry_source: EntrySource;
     };
     CompositeTypes: Record<string, never>;

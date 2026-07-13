@@ -13,12 +13,11 @@ import { computeWeekSettlement, formatSignedDuration } from "./settlement";
 import { computeAccuracy, isLikelyOverrun } from "./accuracy";
 import { weekDayGaps } from "./unrecorded";
 
-function category(id: string, group: Category["category_group"]): Category {
+function category(id: string): Category {
   return {
     id,
     user_id: "u",
     name: id,
-    category_group: group,
     description: null,
     archived_at: null,
     created_at: "",
@@ -71,8 +70,8 @@ function entry(
 }
 
 const monday = new Date(2026, 6, 13);
-const reading = category("reading", "core");
-const games = category("games", "rest");
+const reading = category("reading");
+const games = category("games");
 
 describe("weekDayKeys / groupItemsByDay", () => {
   it("produces Monday-first day keys and position-sorted columns", () => {
@@ -117,7 +116,7 @@ describe("computeWeekStatus", () => {
 });
 
 describe("computeWeekSettlement (planned vs actual)", () => {
-  it("computes over-plan diff and effective work", () => {
+  it("computes over-plan diff", () => {
     const settlement = computeWeekSettlement(
       [reading, games],
       [
@@ -128,7 +127,6 @@ describe("computeWeekSettlement (planned vs actual)", () => {
     );
     const row = settlement.rows.find((r) => r.category.id === "reading")!;
     expect(row.diffMinutes).toBe(60);
-    expect(settlement.effectiveWorkMinutes).toBe(360);
     expect(settlement.hasPlan).toBe(true);
   });
 

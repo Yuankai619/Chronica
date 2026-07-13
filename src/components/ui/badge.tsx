@@ -1,19 +1,21 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import type { CategoryGroup } from "@/lib/database.types";
+import { categoryPaletteIndex } from "@/lib/categories";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[0.65rem] font-medium tracking-[0.08em] uppercase",
+  "inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[0.7rem] font-medium",
   {
     variants: {
       variant: {
         default: "border-hairline text-muted",
-        core: "border-accent-dim text-accent",
-        supportive: "border-[#2b4a63] text-[#7cc0f5]",
-        social: "border-[#2c5241] text-[#6fd29c]",
-        rest: "border-hairline text-muted",
         warning: "border-accent-dim text-accent",
+        c0: "border-accent-dim text-accent",
+        c1: "border-[#2b4a63] text-[#7cc0f5]",
+        c2: "border-[#2c5241] text-[#6fd29c]",
+        c3: "border-[#5a3a5e] text-[#d9a1e0]",
+        c4: "border-[#5e3a3a] text-[#eba9a1]",
+        c5: "border-[#31505a] text-[#8fd5e0]",
       },
     },
     defaultVariants: { variant: "default" },
@@ -29,6 +31,24 @@ export function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
-export function groupBadgeVariant(group: CategoryGroup) {
-  return group;
+/** Stable color variant for a category id. */
+export function categoryVariant(id: string): BadgeProps["variant"] {
+  return `c${categoryPaletteIndex(id)}` as BadgeProps["variant"];
+}
+
+/** Convenience: a category name badge in its stable color. */
+export function CategoryBadge({
+  id,
+  name,
+  className,
+}: {
+  id: string;
+  name: string;
+  className?: string;
+}) {
+  return (
+    <Badge variant={categoryVariant(id)} className={className}>
+      {name}
+    </Badge>
+  );
 }

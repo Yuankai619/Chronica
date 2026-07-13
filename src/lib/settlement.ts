@@ -1,4 +1,4 @@
-import { isEffectiveWork, type Category } from "@/lib/categories";
+import type { Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
 
 export interface SettlementRow {
@@ -14,8 +14,6 @@ export interface WeekSettlement {
   rows: SettlementRow[];
   totalActualMinutes: number;
   totalPlannedMinutes: number | null;
-  /** Core + Supportive actual minutes — Lyubishchev's effective work time. */
-  effectiveWorkMinutes: number;
   hasPlan: boolean;
 }
 
@@ -46,16 +44,11 @@ export function computeWeekSettlement(
   const hasPlan = planned.size > 0;
 
   const rows: SettlementRow[] = [];
-  let effectiveWorkMinutes = 0;
 
   for (const category of categories) {
     const actualMinutes = actuals.get(category.id) ?? 0;
     const plannedMinutes = hasPlan ? (planned.get(category.id) ?? null) : null;
     if (actualMinutes === 0 && plannedMinutes === null) continue;
-
-    if (isEffectiveWork(category.category_group)) {
-      effectiveWorkMinutes += actualMinutes;
-    }
 
     rows.push({
       category,
@@ -72,7 +65,6 @@ export function computeWeekSettlement(
     totalPlannedMinutes: hasPlan
       ? rows.reduce((s, r) => s + (r.plannedMinutes ?? 0), 0)
       : null,
-    effectiveWorkMinutes,
     hasPlan,
   };
 }
