@@ -54,6 +54,7 @@ export default async function PlanningPage({
     { data: lastWeekEntries },
     { data: retro },
     { count: reviewEntryCount },
+    gcalLinked,
   ] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
     supabase
@@ -81,9 +82,8 @@ export default async function PlanningPage({
       .select("id", { count: "exact", head: true })
       .gte("started_at", reviewWeekStart.toISOString())
       .lt("started_at", weekStart.toISOString()),
+    isGoogleLinked(supabase, user!.id),
   ]);
-
-  const gcalLinked = await isGoogleLinked(supabase, user!.id);
 
   const sorted = sortCategories(categories ?? []);
   const status = computeWeekStatus(

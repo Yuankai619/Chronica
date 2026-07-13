@@ -22,6 +22,7 @@ export default async function Home() {
     session,
     { data: todayEntries },
     { data: plannedToday },
+    tasks,
   ] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
     ensureCalendarSession(supabase, user!.id),
@@ -34,9 +35,8 @@ export default async function Home() {
       .select("*")
       .eq("day", todayKey)
       .order("position"),
+    getOpenTasks(supabase, user!.id),
   ]);
-
-  const tasks = await getOpenTasks(supabase, user!.id);
 
   // Calendar context for the panel: the active session's event, and the
   // next upcoming auto-start today (to refresh the page right on time).

@@ -10,6 +10,14 @@ type Client = SupabaseClient<Database>;
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 const MAX_LISTS = 10;
+const TASK_CACHE_TTL_MS = 60 * 1000;
+
+const taskCache = new Map<string, { tasks: TodoTask[]; at: number }>();
+
+/** Drops the cached open-task list (e.g. after completing a task). */
+export function invalidateTaskCache(userId: string): void {
+  taskCache.delete(userId);
+}
 
 /**
  * Returns a valid access token for the user's linked Microsoft account,
@@ -82,18 +90,31 @@ export async function getOpenTasks(
   supabase: Client,
   userId: string,
 ): Promise<TodoTask[] | null> {
+  const cached = taskCache.get(userId);
+  if (cached && Date.now() - cached.at < TASK_CACHE_TTL_MS) {
+    return cached.tasks;
+  }
+
   const token = await getAccessToken(supabase, userId);
   if (!token) return null;
 
   const lists = await graphGet<{ value: GraphList[] }>(token, "/me/todo/lists");
   if (!lists) return null;
 
+  // Fetch every list's tasks in parallel — sequential round-trips were
+  // the main cost of loading the timer and entries pages.
+  const perList = await Promise.all(
+    lists.value.slice(0, MAX_LISTS).map(async (list) => ({
+      list,
+      result: await graphGet<{ value: GraphTask[] }>(
+        token,
+        `/me/todo/lists/${list.id}/tasks?$top=50&$filter=status ne 'completed'`,
+      ),
+    })),
+  );
+
   const tasks: TodoTask[] = [];
-  for (const list of lists.value.slice(0, MAX_LISTS)) {
-    const result = await graphGet<{ value: GraphTask[] }>(
-      token,
-      `/me/todo/lists/${list.id}/tasks?$top=50&$filter=status ne 'completed'`,
-    );
+  for (const { list, result } of perList) {
     if (!result) continue;
     for (const task of result.value) {
       const body = task.body?.content?.trim() ?? "";
@@ -107,6 +128,7 @@ export async function getOpenTasks(
       });
     }
   }
+  taskCache.set(userId, { tasks, at: Date.now() });
   return tasks;
 }
 
