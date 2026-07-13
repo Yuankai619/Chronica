@@ -8,20 +8,26 @@ export function TaskCompleteCheckbox({
   taskId,
   listId,
   title,
+  disabled = false,
 }: {
   taskId: string;
   listId: string | null;
   title: string;
+  disabled?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (listId === null) {
+  if (disabled || listId === null) {
     return (
       <input
         type="checkbox"
         disabled
-        aria-label="Cannot complete — entry predates list tracking"
+        aria-label={
+          disabled
+            ? "Cannot complete — no time entries linked"
+            : "Cannot complete — entry predates list tracking"
+        }
         className="size-4 opacity-30"
       />
     );
