@@ -16,15 +16,17 @@ export default async function EntriesPage() {
   const since = new Date();
   since.setDate(since.getDate() - DAYS_SHOWN);
 
-  const [{ data: categories }, { data: entries, error }] = await Promise.all([
-    supabase.from("categories").select("*"),
-    supabase
-      .from("time_entries")
-      .select("*")
-      .gte("started_at", since.toISOString())
-      .order("started_at", { ascending: false })
-      .limit(300),
-  ]);
+  const [{ data: categories }, { data: entries, error }, tasks] =
+    await Promise.all([
+      supabase.from("categories").select("*"),
+      supabase
+        .from("time_entries")
+        .select("*")
+        .gte("started_at", since.toISOString())
+        .order("started_at", { ascending: false })
+        .limit(300),
+      getOpenTasks(supabase, user!.id),
+    ]);
 
   if (error) {
     return (
@@ -34,8 +36,6 @@ export default async function EntriesPage() {
       </main>
     );
   }
-
-  const tasks = await getOpenTasks(supabase, user!.id);
 
   return (
     <main>

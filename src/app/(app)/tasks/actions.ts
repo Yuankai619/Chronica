@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { completeTodoTask } from "@/server/microsoft";
+import { completeTodoTask, invalidateTaskCache } from "@/server/microsoft";
 
 export interface ActionResult {
   error?: string;
@@ -26,6 +26,7 @@ export async function completeTask(
 
   const synced = await completeTodoTask(supabase, user.id, listId, taskId);
   if (synced.error) return { error: synced.error };
+  invalidateTaskCache(user.id);
 
   const { error } = await supabase
     .from("completed_tasks")
