@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 
-export function SettingsForm({
-  timerCapMinutes,
-  dailyTargetMinutes,
-}: {
-  timerCapMinutes: number;
-  dailyTargetMinutes: number;
-}) {
+export function SettingsForm({ timerCapMinutes }: { timerCapMinutes: number }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -26,7 +20,7 @@ export function SettingsForm({
   }
 
   return (
-    <Card className="max-w-md">
+    <Card>
       <CardTitle>Recording</CardTitle>
       <form action={submit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
@@ -40,19 +34,6 @@ export function SettingsForm({
           <span className="text-xs text-muted">
             A session auto-stops and is flagged after this long. Minutes (240)
             or h:mm (4:00).
-          </span>
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span>Daily recording target</span>
-          <Input
-            name="daily_target"
-            defaultValue={String(dailyTargetMinutes)}
-            className="font-mono"
-            required
-          />
-          <span className="text-xs text-muted">
-            How many recorded hours you aim for each day — unrecorded time is
-            measured against this. Minutes (840) or h:mm (14:00).
           </span>
         </label>
         <div className="flex items-center gap-3">

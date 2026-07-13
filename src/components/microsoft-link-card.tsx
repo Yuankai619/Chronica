@@ -15,7 +15,7 @@ export function MicrosoftLinkCard({
   const [pending, startTransition] = useTransition();
 
   return (
-    <Card className="max-w-md">
+    <Card>
       <CardTitle>Microsoft To Do</CardTitle>
       {status === "error" ? (
         <p className="mb-3 text-sm text-danger">Linking failed — try again.</p>

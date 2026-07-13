@@ -1,7 +1,5 @@
 import type { TimeEntry } from "@/lib/entries";
 
-export const DEFAULT_DAILY_TARGET_MINUTES = 840; // 14 hours
-
 /** Local-day key for a date. */
 export function dayKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -21,15 +19,19 @@ export function recordedByDay(entries: TimeEntry[]): Map<string, number> {
 export interface DayGap {
   day: string;
   recordedMinutes: number;
-  /** target − recorded, floored at 0. */
+  plannedMinutes: number;
+  /** planned − recorded, floored at 0. */
   unrecordedMinutes: number;
 }
 
-/** Recorded vs target for each of the 7 days of a week (Monday first). */
+/**
+ * Recorded vs planned for each of the 7 days of a week (Monday first).
+ * The target is whatever the planning board scheduled for that day.
+ */
 export function weekDayGaps(
   weekStart: Date,
   entries: TimeEntry[],
-  targetMinutes: number,
+  plannedByDay: Map<string, number>,
 ): DayGap[] {
   const totals = recordedByDay(entries);
   const days: DayGap[] = [];
@@ -38,10 +40,12 @@ export function weekDayGaps(
     d.setDate(d.getDate() + i);
     const key = dayKey(d);
     const recorded = totals.get(key) ?? 0;
+    const planned = plannedByDay.get(key) ?? 0;
     days.push({
       day: key,
       recordedMinutes: recorded,
-      unrecordedMinutes: Math.max(0, targetMinutes - recorded),
+      plannedMinutes: planned,
+      unrecordedMinutes: Math.max(0, planned - recorded),
     });
   }
   return days;

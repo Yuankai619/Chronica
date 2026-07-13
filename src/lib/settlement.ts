@@ -1,22 +1,19 @@
-import type { Tables } from "@/lib/database.types";
 import { isEffectiveWork, type Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
 
-export type PlanItem = Tables<"weekly_plan_items">;
-
 export interface SettlementRow {
   category: Category;
-  /** Budget for the week including the rollover snapshot; null = no budget set. */
-  budgetMinutes: number | null;
+  /** Planned minutes for the week; null when nothing was planned. */
+  plannedMinutes: number | null;
   actualMinutes: number;
-  /** actual − budget; positive = over budget. Null when no budget. */
+  /** actual − planned; positive = over plan. Null when nothing planned. */
   diffMinutes: number | null;
 }
 
 export interface WeekSettlement {
   rows: SettlementRow[];
   totalActualMinutes: number;
-  totalBudgetMinutes: number | null;
+  totalPlannedMinutes: number | null;
   /** Core + Supportive actual minutes — Lyubishchev's effective work time. */
   effectiveWorkMinutes: number;
   hasPlan: boolean;
@@ -35,34 +32,26 @@ export function actualsByCategory(entries: TimeEntry[]): Map<string, number> {
 }
 
 /**
- * Live budget-vs-actual settlement for one week. Entries must already be
- * filtered to the week (by started_at — see getWeekStart/getWeekEnd).
- * With no plan, actuals are shown and over/under stays uncomputed (spec).
- * Categories appear when they have a budget or any actual time.
+ * Live planned-vs-actual settlement for one week. Entries must already be
+ * filtered to the week (by started_at); `planned` is total planned minutes
+ * per category from the week's board items. With no plan, actuals are
+ * shown and over/under stays uncomputed.
  */
 export function computeWeekSettlement(
   categories: Category[],
   entries: TimeEntry[],
-  planItems: PlanItem[] | null,
+  planned: Map<string, number>,
 ): WeekSettlement {
   const actuals = actualsByCategory(entries);
-  const budgets = new Map<string, number>();
-  if (planItems) {
-    for (const item of planItems) {
-      budgets.set(
-        item.category_id,
-        item.budgeted_minutes + item.rollover_minutes,
-      );
-    }
-  }
+  const hasPlan = planned.size > 0;
 
   const rows: SettlementRow[] = [];
   let effectiveWorkMinutes = 0;
 
   for (const category of categories) {
     const actualMinutes = actuals.get(category.id) ?? 0;
-    const budgetMinutes = budgets.get(category.id) ?? null;
-    if (actualMinutes === 0 && budgetMinutes === null) continue;
+    const plannedMinutes = hasPlan ? (planned.get(category.id) ?? null) : null;
+    if (actualMinutes === 0 && plannedMinutes === null) continue;
 
     if (isEffectiveWork(category.category_group)) {
       effectiveWorkMinutes += actualMinutes;
@@ -70,46 +59,22 @@ export function computeWeekSettlement(
 
     rows.push({
       category,
-      budgetMinutes,
+      plannedMinutes,
       actualMinutes,
       diffMinutes:
-        budgetMinutes === null ? null : actualMinutes - budgetMinutes,
+        plannedMinutes === null ? null : actualMinutes - plannedMinutes,
     });
   }
 
-  const totalActualMinutes = rows.reduce((s, r) => s + r.actualMinutes, 0);
-  const hasPlan = planItems !== null && planItems.length > 0;
-
   return {
     rows,
-    totalActualMinutes,
-    totalBudgetMinutes: hasPlan
-      ? rows.reduce((s, r) => s + (r.budgetMinutes ?? 0), 0)
+    totalActualMinutes: rows.reduce((s, r) => s + r.actualMinutes, 0),
+    totalPlannedMinutes: hasPlan
+      ? rows.reduce((s, r) => s + (r.plannedMinutes ?? 0), 0)
       : null,
     effectiveWorkMinutes,
     hasPlan,
   };
-}
-
-/**
- * Per-category balance of one finished week: (budget + rollover) − actual.
- * Positive = surplus (time left unused), negative = deficit (overspent).
- * Only categories that had a budget produce a balance.
- */
-export function computeWeekBalances(
-  planItems: PlanItem[],
-  entries: TimeEntry[],
-): Map<string, number> {
-  const actuals = actualsByCategory(entries);
-  const balances = new Map<string, number>();
-  for (const item of planItems) {
-    const budget = item.budgeted_minutes + item.rollover_minutes;
-    balances.set(
-      item.category_id,
-      budget - (actuals.get(item.category_id) ?? 0),
-    );
-  }
-  return balances;
 }
 
 /** Signed minutes → "+2h 30m" / "−45m" / "0m". */

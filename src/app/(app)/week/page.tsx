@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
 import { computeWeekSettlement } from "@/lib/settlement";
 import { formatDuration } from "@/lib/entries";
+import { plannedByCategory, plannedByDay, weekDayKeys } from "@/lib/plan-board";
+import { weekDayGaps } from "@/lib/unrecorded";
 import { SettlementTable } from "@/components/settlement-table";
-import { Card } from "@/components/ui/card";
 import { DayGaps } from "@/components/day-gaps";
-import { DEFAULT_DAILY_TARGET_MINUTES, weekDayGaps } from "@/lib/unrecorded";
+import { Card } from "@/components/ui/card";
 
 export const metadata = { title: "Week — Chronica" };
 
@@ -33,49 +34,30 @@ export default async function WeekPage({
   const weekStart = parseWeekParam(week);
   const weekEnd = getWeekEnd(weekStart);
   const weekKey = getWeekKey(weekStart);
+  const dayKeys = weekDayKeys(weekStart);
   const isCurrentWeek = weekKey === getWeekKey(new Date());
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [
-    { data: categories },
-    { data: entries },
-    { data: plan },
-    { data: settings },
-  ] = await Promise.all([
-    supabase.from("categories").select("*"),
-    supabase
-      .from("time_entries")
-      .select("*")
-      .gte("started_at", weekStart.toISOString())
-      .lt("started_at", weekEnd.toISOString()),
-    supabase
-      .from("weekly_plans")
-      .select("*")
-      .eq("week_start", weekKey)
-      .maybeSingle(),
-    supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", user!.id)
-      .maybeSingle(),
-  ]);
-
-  const { data: planItems } = plan
-    ? await supabase
-        .from("weekly_plan_items")
+  const [{ data: categories }, { data: entries }, { data: items }] =
+    await Promise.all([
+      supabase.from("categories").select("*"),
+      supabase
+        .from("time_entries")
         .select("*")
-        .eq("plan_id", plan.id)
-    : { data: null };
+        .gte("started_at", weekStart.toISOString())
+        .lt("started_at", weekEnd.toISOString()),
+      supabase
+        .from("planned_items")
+        .select("*")
+        .gte("day", dayKeys[0])
+        .lte("day", dayKeys[6]),
+    ]);
 
   const settlement = computeWeekSettlement(
     categories ?? [],
     entries ?? [],
-    planItems,
+    plannedByCategory(items ?? []),
   );
 
   return (
@@ -120,18 +102,18 @@ export default async function WeekPage({
           </p>
         </Card>
         <Card className="col-span-2 sm:col-span-1">
-          <p className="microlabel mb-1">Budgeted</p>
+          <p className="microlabel mb-1">Planned</p>
           <p className="font-mono text-2xl font-semibold tabular-nums">
-            {settlement.totalBudgetMinutes === null
+            {settlement.totalPlannedMinutes === null
               ? "—"
-              : formatDuration(settlement.totalBudgetMinutes)}
+              : formatDuration(settlement.totalPlannedMinutes)}
           </p>
         </Card>
       </div>
 
       {!settlement.hasPlan ? (
         <p className="mb-4 text-sm text-muted">
-          No plan for this week — actuals only, no over/under.
+          Nothing planned this week — actuals only, no over/under.
         </p>
       ) : null}
 
@@ -142,11 +124,8 @@ export default async function WeekPage({
           gaps={weekDayGaps(
             weekStart,
             entries ?? [],
-            settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES,
+            plannedByDay(items ?? []),
           )}
-          targetMinutes={
-            settings?.daily_target_minutes ?? DEFAULT_DAILY_TARGET_MINUTES
-          }
         />
       </div>
     </main>

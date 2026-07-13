@@ -9,7 +9,8 @@ import { formatDuration } from "@/lib/entries";
 import { computeWeekSettlement } from "@/lib/settlement";
 import { formatSignedDuration } from "@/lib/settlement";
 import { getWeekEnd } from "@/lib/week";
-import { getPastWeeks } from "@/server/planning";
+import { getWeekHistory } from "@/server/planning";
+import { plannedByCategory } from "@/lib/plan-board";
 
 type Client = SupabaseClient<Database>;
 
@@ -50,13 +51,16 @@ async function buildContext(
   const weekEnd = getWeekEnd(weekStart);
   const nextWeekKey = weekEnd.toISOString().slice(0, 10);
 
+  const nextWeekEnd = new Date(weekEnd);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+
   const [
     { data: categories },
     { data: entries },
-    { data: plans },
+    { data: plannedItems },
     { data: principles },
     { data: memories },
-    pastWeeks,
+    history,
   ] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase
@@ -65,28 +69,19 @@ async function buildContext(
       .gte("started_at", weekStart.toISOString())
       .lt("started_at", weekEnd.toISOString()),
     supabase
-      .from("weekly_plans")
+      .from("planned_items")
       .select("*")
-      .in("week_start", [reviewWeekKey, nextWeekKey]),
+      .gte("day", reviewWeekKey)
+      .lt("day", nextWeekEnd.toISOString().slice(0, 10)),
     supabase.from("principles").select("*"),
     supabase.from("ai_memories").select("*").order("created_at"),
-    getPastWeeks(supabase, userId, nextWeekKey),
+    getWeekHistory(supabase, userId, nextWeekKey),
   ]);
 
-  const reviewPlan = plans?.find((p) => p.week_start === reviewWeekKey);
-  const nextPlan = plans?.find((p) => p.week_start === nextWeekKey);
-  const { data: reviewItems } = reviewPlan
-    ? await supabase
-        .from("weekly_plan_items")
-        .select("*")
-        .eq("plan_id", reviewPlan.id)
-    : { data: null };
-  const { data: nextItems } = nextPlan
-    ? await supabase
-        .from("weekly_plan_items")
-        .select("*")
-        .eq("plan_id", nextPlan.id)
-    : { data: null };
+  const reviewItems = (plannedItems ?? []).filter((i) => i.day < nextWeekKey);
+  const nextItems = (plannedItems ?? []).filter((i) => i.day >= nextWeekKey);
+  const reviewPlanned = plannedByCategory(reviewItems);
+  const nextPlanned = plannedByCategory(nextItems);
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const name = (id: string) => categoryById.get(id)?.name ?? id;
@@ -94,13 +89,13 @@ async function buildContext(
   const settlement = computeWeekSettlement(
     categories ?? [],
     entries ?? [],
-    reviewItems,
+    reviewPlanned,
   );
-  const accuracy = computeAccuracy(pastWeeks);
+  const accuracy = computeAccuracy(history);
 
   const lines: string[] = [];
   lines.push(`# Review week ${reviewWeekKey}`);
-  lines.push(`Fully planned weeks of history: ${pastWeeks.length}`);
+  lines.push(`Fully planned weeks of history: ${history.length}`);
 
   lines.push(`\n## Categories (descriptions are private AI context)`);
   for (const c of categories ?? []) {
@@ -110,10 +105,10 @@ async function buildContext(
   }
 
   lines.push(`\n## Settlement for ${reviewWeekKey}`);
-  if (!settlement.hasPlan) lines.push(`(no plan was saved for this week)`);
+  if (!settlement.hasPlan) lines.push(`(nothing was planned for this week)`);
   for (const row of settlement.rows) {
     lines.push(
-      `- ${row.category.name}: budget ${row.budgetMinutes === null ? "unset" : formatDuration(row.budgetMinutes)}, actual ${formatDuration(row.actualMinutes)}${row.diffMinutes === null ? "" : `, diff ${formatSignedDuration(row.diffMinutes)}`}`,
+      `- ${row.category.name}: planned ${row.plannedMinutes === null ? "unset" : formatDuration(row.plannedMinutes)}, actual ${formatDuration(row.actualMinutes)}${row.diffMinutes === null ? "" : `, diff ${formatSignedDuration(row.diffMinutes)}`}`,
     );
   }
   lines.push(
@@ -135,11 +130,9 @@ async function buildContext(
   }
 
   lines.push(`\n## Next week's plan (${nextWeekKey})`);
-  if (nextItems && nextItems.length > 0) {
-    for (const item of nextItems) {
-      lines.push(
-        `- ${name(item.category_id)}: budget ${formatDuration(item.budgeted_minutes)}${item.rollover_minutes !== 0 ? `, rollover ${formatSignedDuration(item.rollover_minutes)}` : ""}`,
-      );
+  if (nextPlanned.size > 0) {
+    for (const [categoryId, minutes] of nextPlanned) {
+      lines.push(`- ${name(categoryId)}: planned ${formatDuration(minutes)}`);
     }
   } else {
     lines.push(`(not planned yet)`);
@@ -167,6 +160,17 @@ export async function runRetro(
 ): Promise<RetroResult> {
   if (!retroConfigured()) {
     return { error: "OPENAI_API_KEY is not configured on the server." };
+  }
+
+  // Never analyze an empty week (also enforced by the UI).
+  const reviewStart = new Date(`${reviewWeekKey}T00:00:00`);
+  const { count } = await supabase
+    .from("time_entries")
+    .select("id", { count: "exact", head: true })
+    .gte("started_at", reviewStart.toISOString())
+    .lt("started_at", getWeekEnd(reviewStart).toISOString());
+  if ((count ?? 0) === 0) {
+    return { error: "Last week has no recorded entries to review." };
   }
 
   const context = await buildContext(supabase, userId, reviewWeekKey);

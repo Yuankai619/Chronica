@@ -109,6 +109,63 @@ export interface Database {
         };
         Relationships: [];
       };
+      planned_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          day: string;
+          category_id: string;
+          expected_minutes: number;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          day: string;
+          category_id: string;
+          expected_minutes: number;
+          position?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          day?: string;
+          category_id?: string;
+          expected_minutes?: number;
+          position?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      completed_tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          task_id: string;
+          list_id: string;
+          title: string;
+          completed_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          task_id: string;
+          list_id: string;
+          title: string;
+          completed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          task_id?: string;
+          list_id?: string;
+          title?: string;
+          completed_at?: string;
+        };
+        Relationships: [];
+      };
       user_settings: {
         Row: {
           user_id: string;
@@ -178,6 +235,7 @@ export interface Database {
           needs_confirmation: boolean;
           todo_task_id: string | null;
           todo_task_title: string | null;
+          todo_list_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -192,6 +250,7 @@ export interface Database {
           needs_confirmation?: boolean;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
+          todo_list_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -206,6 +265,7 @@ export interface Database {
           needs_confirmation?: boolean;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
+          todo_list_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -221,6 +281,7 @@ export interface Database {
           cap_minutes: number;
           todo_task_id: string | null;
           todo_task_title: string | null;
+          todo_list_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -232,6 +293,7 @@ export interface Database {
           cap_minutes: number;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
+          todo_list_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -243,55 +305,8 @@ export interface Database {
           cap_minutes?: number;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
+          todo_list_id?: string | null;
           created_at?: string;
-        };
-        Relationships: [];
-      };
-      weekly_plans: {
-        Row: {
-          id: string;
-          user_id: string;
-          week_start: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          week_start: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          week_start?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      weekly_plan_items: {
-        Row: {
-          id: string;
-          plan_id: string;
-          category_id: string;
-          budgeted_minutes: number;
-          rollover_minutes: number;
-        };
-        Insert: {
-          id?: string;
-          plan_id: string;
-          category_id: string;
-          budgeted_minutes: number;
-          rollover_minutes?: number;
-        };
-        Update: {
-          id?: string;
-          plan_id?: string;
-          category_id?: string;
-          budgeted_minutes?: number;
-          rollover_minutes?: number;
         };
         Relationships: [];
       };
