@@ -49,3 +49,21 @@ export async function unlinkMicrosoft(): Promise<ActionResult> {
   revalidatePath("/settings");
   return {};
 }
+
+/** Removes the linked Google Calendar account and its tokens. */
+export async function unlinkGoogleCalendar(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("google_accounts")
+    .delete()
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return {};
+}

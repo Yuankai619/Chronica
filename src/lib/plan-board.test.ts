@@ -40,6 +40,10 @@ function item(
     category_id: categoryId,
     expected_minutes: minutes,
     position,
+    gcal_event_id: null,
+    title: null,
+    start_at: null,
+    end_at: null,
     created_at: "",
   };
 }

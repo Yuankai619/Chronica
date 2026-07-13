@@ -114,28 +114,70 @@ export interface Database {
           id: string;
           user_id: string;
           day: string;
-          category_id: string;
+          category_id: string | null;
           expected_minutes: number;
           position: number;
+          gcal_event_id: string | null;
+          title: string | null;
+          start_at: string | null;
+          end_at: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
           day: string;
-          category_id: string;
+          category_id?: string | null;
           expected_minutes: number;
           position?: number;
+          gcal_event_id?: string | null;
+          title?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
           day?: string;
-          category_id?: string;
+          category_id?: string | null;
           expected_minutes?: number;
           position?: number;
+          gcal_event_id?: string | null;
+          title?: string | null;
+          start_at?: string | null;
+          end_at?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      google_accounts: {
+        Row: {
+          user_id: string;
+          access_token: string;
+          refresh_token: string;
+          expires_at: string;
+          account_email: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          access_token: string;
+          refresh_token: string;
+          expires_at: string;
+          account_email?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          access_token?: string;
+          refresh_token?: string;
+          expires_at?: string;
+          account_email?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
