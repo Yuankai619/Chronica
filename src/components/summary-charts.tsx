@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { CategoryGroup } from "@/lib/database.types";
 import { formatDuration } from "@/lib/entries";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface WeekCompareRow {
+  id: string;
   name: string;
-  group: CategoryGroup;
   plannedMinutes: number;
   actualMinutes: number;
 }
 
 export interface RangeRow {
+  id: string;
   name: string;
-  group: CategoryGroup;
   /** Total minutes over the last 30 / 90 / 180 / 365 days. */
   totals: [number, number, number, number];
 }
@@ -60,24 +59,23 @@ function ToggleGroup<T extends string>({
 }
 
 function BarRow({
+  id,
   name,
-  group,
   bars,
   max,
 }: {
+  id: string;
   name: string;
-  group: CategoryGroup;
   bars: { minutes: number; solid: boolean }[];
   max: number;
 }) {
   return (
     <div className="grid grid-cols-[minmax(6rem,10rem)_1fr] items-center gap-3">
-      <Badge
-        variant={group}
+      <CategoryBadge
+        id={id}
+        name={name}
         className="justify-self-start break-words whitespace-normal"
-      >
-        {name}
-      </Badge>
+      />
       <div className="flex flex-col gap-1">
         {bars.map((bar, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -148,9 +146,9 @@ export function WeekCompareChart({ rows }: { rows: WeekCompareRow[] }) {
       <div className="flex flex-col gap-3">
         {visible.map((row) => (
           <BarRow
-            key={row.name}
+            key={row.id}
+            id={row.id}
             name={row.name}
-            group={row.group}
             max={max}
             bars={[
               ...(mode !== "actual"
@@ -203,9 +201,9 @@ export function CategoryAverageChart({ rows }: { rows: RangeRow[] }) {
         <div className="flex flex-col gap-3">
           {averaged.map((row) => (
             <BarRow
-              key={row.name}
+              key={row.id}
+              id={row.id}
               name={row.name}
-              group={row.group}
               max={max}
               bars={[{ minutes: row.average, solid: true }]}
             />

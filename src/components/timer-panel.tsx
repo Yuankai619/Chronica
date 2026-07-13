@@ -12,7 +12,7 @@ import type { TodoTask } from "@/lib/tasks";
 import { TaskPicker } from "@/components/task-picker";
 import type { PlannedItem } from "@/lib/plan-board";
 import { formatDuration } from "@/lib/entries";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/badge";
 
 type TimerSession = Tables<"timer_sessions">;
 
@@ -246,7 +246,7 @@ function QuickStart({
               }
               className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-sm transition-colors hover:border-accent-dim disabled:opacity-50"
             >
-              <Badge variant={category.category_group}>{category.name}</Badge>
+              <CategoryBadge id={category.id} name={category.name} />
               <span className="font-mono text-xs text-accent tabular-nums">
                 {formatDuration(item.expected_minutes)}
               </span>

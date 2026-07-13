@@ -100,7 +100,7 @@ async function buildContext(
   lines.push(`\n## Categories (descriptions are private AI context)`);
   for (const c of categories ?? []) {
     lines.push(
-      `- ${c.name} [${c.category_group}]${c.archived_at ? " (archived)" : ""}${c.description ? `: ${c.description}` : ""}`,
+      `- ${c.name}${c.archived_at ? " (archived)" : ""}${c.description ? `: ${c.description}` : ""}`,
     );
   }
 
@@ -111,9 +111,6 @@ async function buildContext(
       `- ${row.category.name}: planned ${row.plannedMinutes === null ? "unset" : formatDuration(row.plannedMinutes)}, actual ${formatDuration(row.actualMinutes)}${row.diffMinutes === null ? "" : `, diff ${formatSignedDuration(row.diffMinutes)}`}`,
     );
   }
-  lines.push(
-    `Effective work (core+supportive): ${formatDuration(settlement.effectiveWorkMinutes)}`,
-  );
 
   lines.push(`\n## Entries (start time, category, duration, task, note)`);
   for (const e of (entries ?? []).slice(0, 200)) {

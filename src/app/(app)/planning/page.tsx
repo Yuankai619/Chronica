@@ -10,7 +10,7 @@ import { PlanBoard } from "@/components/plan-board";
 import { RetroCard } from "@/components/retro-card";
 import { CalendarSyncButton } from "@/components/calendar-sync-button";
 import { isGoogleLinked } from "@/server/google-calendar";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/badge";
 
 export const metadata = { title: "Planning — Chronica" };
 
@@ -130,9 +130,7 @@ export default async function PlanningPage({
                 key={row.category.id}
                 className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
               >
-                <Badge variant={row.category.category_group}>
-                  {row.category.name}
-                </Badge>
+                <CategoryBadge id={row.category.id} name={row.category.name} />
                 <span className="font-mono text-xs text-muted tabular-nums">
                   {formatDuration(row.actualMinutes)} /{" "}
                   {formatDuration(row.plannedMinutes)}

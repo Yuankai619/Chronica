@@ -8,15 +8,11 @@ import {
   unarchiveCategory,
   updateCategory,
 } from "@/app/(app)/categories/actions";
-import {
-  CATEGORY_GROUP_LABELS,
-  CATEGORY_GROUPS,
-  type Category,
-} from "@/lib/categories";
+import type { Category } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, CategoryBadge } from "@/components/ui/badge";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 function CategoryForm({
@@ -45,27 +41,13 @@ function CategoryForm({
 
   return (
     <form action={submit} className="flex flex-col gap-2.5">
-      <div className="flex flex-col gap-2.5 sm:flex-row">
-        <Input
-          name="name"
-          placeholder="Category name"
-          defaultValue={category?.name}
-          maxLength={100}
-          required
-        />
-        <Select
-          name="category_group"
-          defaultValue={category?.category_group ?? "core"}
-          aria-label="Group"
-          className="sm:w-44"
-        >
-          {CATEGORY_GROUPS.map((g) => (
-            <option key={g} value={g}>
-              {CATEGORY_GROUP_LABELS[g]}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <Input
+        name="name"
+        placeholder="Category name"
+        defaultValue={category?.name}
+        maxLength={100}
+        required
+      />
       <Textarea
         name="description"
         placeholder="Description (context for the AI; only shown here)"
@@ -107,10 +89,7 @@ function CategoryRow({ category }: { category: Category }) {
     >
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium">{category.name}</span>
-          <Badge variant={category.category_group}>
-            {CATEGORY_GROUP_LABELS[category.category_group]}
-          </Badge>
+          <CategoryBadge id={category.id} name={category.name} />
           {archived ? <Badge>archived</Badge> : null}
         </div>
         {category.description ? (

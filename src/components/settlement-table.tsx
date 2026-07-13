@@ -1,7 +1,6 @@
 import { formatSignedDuration, type WeekSettlement } from "@/lib/settlement";
 import { formatDuration } from "@/lib/entries";
-import { CATEGORY_GROUP_LABELS } from "@/lib/categories";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/badge";
 
 export function SettlementTable({
   settlement,
@@ -31,10 +30,7 @@ export function SettlementTable({
           {settlement.rows.map((row) => (
             <tr key={row.category.id} className="border-b border-hairline">
               <td className="py-2.5">
-                <span className="mr-2 font-medium">{row.category.name}</span>
-                <Badge variant={row.category.category_group}>
-                  {CATEGORY_GROUP_LABELS[row.category.category_group]}
-                </Badge>
+                <CategoryBadge id={row.category.id} name={row.category.name} />
               </td>
               <td className="py-2.5 text-right font-mono text-muted tabular-nums">
                 {row.plannedMinutes === null

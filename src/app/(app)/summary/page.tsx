@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_GROUP_LABELS, CATEGORY_GROUPS } from "@/lib/categories";
 import { formatDuration } from "@/lib/entries";
-import { monthlyEffectiveTrend, summarizePeriod } from "@/lib/summary";
-import { Badge } from "@/components/ui/badge";
+import { monthlyRecordedTrend, summarizePeriod } from "@/lib/summary";
+import { CategoryBadge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
 import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
 import { plannedByCategory } from "@/lib/plan-board";
@@ -118,8 +117,8 @@ export default async function SummaryPage({
     (weekEntries ?? []) as Parameters<typeof actualsByCategory>[0],
   );
   const compareRows: WeekCompareRow[] = (categories ?? []).map((c) => ({
+    id: c.id,
     name: c.name,
-    group: c.category_group,
     plannedMinutes: weekPlanned.get(c.id) ?? 0,
     actualMinutes: weekActual.get(c.id) ?? 0,
   }));
@@ -141,8 +140,8 @@ export default async function SummaryPage({
   const rangeRows: RangeRow[] = (categories ?? [])
     .filter((c) => rangeTotals.has(c.id))
     .map((c) => ({
+      id: c.id,
       name: c.name,
-      group: c.category_group,
       totals: rangeTotals.get(c.id)!,
     }));
 
@@ -153,10 +152,7 @@ export default async function SummaryPage({
   }
 
   const summary = summarizePeriod(categories ?? [], entries ?? []);
-  const trend =
-    mode === "year"
-      ? monthlyEffectiveTrend(categories ?? [], entries ?? [])
-      : null;
+  const trend = mode === "year" ? monthlyRecordedTrend(entries ?? []) : null;
   const trendMax = trend ? Math.max(...trend, 1) : 1;
 
   return (
@@ -193,17 +189,11 @@ export default async function SummaryPage({
         </nav>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-3 gap-3">
         <Card>
           <p className="microlabel mb-1">Recorded</p>
           <p className="font-mono text-xl font-semibold tabular-nums">
             {formatDuration(summary.totalMinutes)}
-          </p>
-        </Card>
-        <Card>
-          <p className="microlabel mb-1">Effective work</p>
-          <p className="font-mono text-xl font-semibold text-accent tabular-nums">
-            {formatDuration(summary.effectiveWorkMinutes)}
           </p>
         </Card>
         <Card>
@@ -213,16 +203,16 @@ export default async function SummaryPage({
           </p>
         </Card>
         <Card>
-          <p className="microlabel mb-1">Rest</p>
+          <p className="microlabel mb-1">Categories</p>
           <p className="font-mono text-xl font-semibold tabular-nums">
-            {formatDuration(summary.groupTotals.rest)}
+            {summary.categories.length}
           </p>
         </Card>
       </div>
 
       {trend ? (
         <div className="mb-8">
-          <h2 className="microlabel mb-2">Effective work by month</h2>
+          <h2 className="microlabel mb-2">Recorded time by month</h2>
           <div className="grid grid-cols-12 items-end gap-1.5">
             {trend.map((minutes, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
@@ -272,20 +262,6 @@ export default async function SummaryPage({
         <CategoryAverageChart rows={rangeRows} />
       </Card>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {CATEGORY_GROUPS.map((group) => (
-          <div
-            key={group}
-            className="flex items-center justify-between rounded-md border border-hairline px-3 py-2"
-          >
-            <Badge variant={group}>{CATEGORY_GROUP_LABELS[group]}</Badge>
-            <span className="font-mono text-sm tabular-nums">
-              {formatDuration(summary.groupTotals[group])}
-            </span>
-          </div>
-        ))}
-      </div>
-
       {summary.categories.length === 0 ? (
         <p className="text-sm text-muted">Nothing recorded in this period.</p>
       ) : (
@@ -303,10 +279,10 @@ export default async function SummaryPage({
             {summary.categories.map((row) => (
               <tr key={row.category.id} className="border-b border-hairline">
                 <td className="py-2.5">
-                  <span className="mr-2 font-medium">{row.category.name}</span>
-                  <Badge variant={row.category.category_group}>
-                    {CATEGORY_GROUP_LABELS[row.category.category_group]}
-                  </Badge>
+                  <CategoryBadge
+                    id={row.category.id}
+                    name={row.category.name}
+                  />
                 </td>
                 <td className="py-2.5 text-right font-mono tabular-nums">
                   {formatDuration(row.totalMinutes)}

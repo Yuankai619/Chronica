@@ -88,7 +88,7 @@ export default async function WeekPage({
         </nav>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-3">
         <Card>
           <p className="microlabel mb-1">Recorded</p>
           <p className="font-mono text-2xl font-semibold tabular-nums">
@@ -96,12 +96,6 @@ export default async function WeekPage({
           </p>
         </Card>
         <Card>
-          <p className="microlabel mb-1">Effective work</p>
-          <p className="font-mono text-2xl font-semibold text-accent tabular-nums">
-            {formatDuration(settlement.effectiveWorkMinutes)}
-          </p>
-        </Card>
-        <Card className="col-span-2 sm:col-span-1">
           <p className="microlabel mb-1">Planned</p>
           <p className="font-mono text-2xl font-semibold tabular-nums">
             {settlement.totalPlannedMinutes === null

@@ -31,7 +31,7 @@ import { formatDuration } from "@/lib/entries";
 import type { PlannedItem } from "@/lib/plan-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -122,32 +122,29 @@ function ItemCard({
           </span>
         )}
         <span className="flex flex-wrap items-center gap-1.5">
-          {category ? (
-            <Badge variant={category.category_group}>
-              {isCalendar ? category.name : category.category_group}
-            </Badge>
-          ) : isCalendar && !overlay ? (
+          {isCalendar && !overlay ? (
             <select
               aria-label="Assign category"
-              defaultValue=""
+              value={item.category_id ?? ""}
               disabled={assigning}
               onPointerDown={(event) => event.stopPropagation()}
               onChange={(event) => {
                 const value = event.target.value;
-                if (!value) return;
                 startAssign(async () => {
-                  await setPlannedItemCategory(item.id, value);
+                  await setPlannedItemCategory(item.id, value || null);
                 });
               }}
-              className="cursor-pointer rounded-sm border border-hairline bg-transparent px-1 py-0.5 text-[0.65rem] text-muted focus:outline-none"
+              className="cursor-pointer rounded-sm border border-hairline bg-transparent px-1 py-0.5 text-[0.7rem] text-muted focus:outline-none"
             >
-              <option value="">+ category</option>
+              <option value="">no category</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
+          ) : category ? (
+            <CategoryBadge id={category.id} name={category.name} />
           ) : null}
           <span className="font-mono text-xs text-accent tabular-nums">
             {formatDuration(item.expected_minutes)}
