@@ -59,11 +59,15 @@ interface CalendarEvent {
   endAt: Date;
 }
 
+type FetchResult =
+  | { events: CalendarEvent[]; error?: never }
+  | { events?: never; error: string };
+
 async function fetchWeekEvents(
   token: string,
   weekStart: Date,
   weekEnd: Date,
-): Promise<CalendarEvent[] | null> {
+): Promise<FetchResult> {
   const params = new URLSearchParams({
     timeMin: weekStart.toISOString(),
     timeMax: weekEnd.toISOString(),
@@ -76,7 +80,24 @@ async function fetchWeekEvents(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      let detail = `HTTP ${response.status}`;
+      try {
+        const body = (await response.json()) as {
+          error?: { message?: string; status?: string };
+        };
+        if (body.error?.message) {
+          detail = `${response.status}: ${body.error.message}`;
+        }
+      } catch {
+        // keep the bare status
+      }
+      if (response.status === 403) {
+        detail +=
+          " — is the Google Calendar API enabled for this Google Cloud project?";
+      }
+      return { error: `Google Calendar rejected the request (${detail})` };
+    }
     const data = (await response.json()) as {
       items?: {
         id: string;
@@ -103,9 +124,9 @@ async function fetchWeekEvents(
         endAt,
       });
     }
-    return events;
+    return { events };
   } catch {
-    return null;
+    return { error: "Could not reach Google Calendar — network error." };
   }
 }
 
@@ -129,12 +150,16 @@ export async function syncCalendarWeek(
   weekEnd: Date,
 ): Promise<SyncResult> {
   const token = await getGoogleAccessToken(supabase, userId);
-  if (!token) return { error: "Google Calendar is not linked." };
-
-  const events = await fetchWeekEvents(token, weekStart, weekEnd);
-  if (events === null) {
-    return { error: "Could not reach Google Calendar — try again." };
+  if (!token) {
+    return {
+      error:
+        "Google Calendar is not linked or the token could not be refreshed — re-link it in Settings.",
+    };
   }
+
+  const fetched = await fetchWeekEvents(token, weekStart, weekEnd);
+  if (fetched.error !== undefined) return { error: fetched.error };
+  const events = fetched.events;
 
   const firstDay = dayKey(weekStart);
   const lastDay = dayKey(new Date(weekEnd.getTime() - 1));
