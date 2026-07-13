@@ -100,6 +100,7 @@ export async function getOpenTasks(
       tasks.push({
         id: task.id,
         title: task.title,
+        listId: list.id,
         listTitle: list.displayName,
         dueDate: task.dueDateTime?.dateTime ?? null,
         description: body.length > 0 ? body : null,
@@ -107,4 +108,44 @@ export async function getOpenTasks(
     }
   }
   return tasks;
+}
+
+/**
+ * Marks a To Do task completed in Microsoft (write-back). Returns an
+ * error message when the account is unlinked or Graph rejects the call
+ * (e.g. the account was linked before write scopes were added).
+ */
+export async function completeTodoTask(
+  supabase: Client,
+  userId: string,
+  listId: string,
+  taskId: string,
+): Promise<{ error?: string }> {
+  const token = await getAccessToken(supabase, userId);
+  if (!token) return { error: "Microsoft account is not linked." };
+
+  try {
+    const response = await fetch(
+      `${GRAPH}/me/todo/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "completed" }),
+      },
+    );
+    if (!response.ok) {
+      return {
+        error:
+          response.status === 403
+            ? "Microsoft rejected the update — re-link the account to grant write access."
+            : `Microsoft returned ${response.status}.`,
+      };
+    }
+  } catch {
+    return { error: "Could not reach Microsoft — try again." };
+  }
+  return {};
 }

@@ -62,6 +62,7 @@ export async function startTimer(formData: FormData): Promise<ActionResult> {
     cap_minutes: cap,
     todo_task_id: task?.id ?? null,
     todo_task_title: task?.title ?? null,
+    todo_list_id: task?.listId ?? null,
   });
   // 23505 = another session already exists (double-click) — treat as success.
   if (error && error.code !== "23505") return { error: error.message };

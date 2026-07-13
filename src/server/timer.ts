@@ -41,6 +41,7 @@ export async function saveAndClearSession(
     needs_confirmation: settled.needsConfirmation,
     todo_task_id: session.todo_task_id,
     todo_task_title: session.todo_task_title,
+    todo_list_id: session.todo_list_id,
   });
   if (insertError) return { error: insertError.message };
 
