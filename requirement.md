@@ -16,11 +16,13 @@ Delivery is split into two phases:
 - As a user, I want to start a timer on a category with one click, so that recording an activity takes almost no effort.
 - As a user, I want to set an expected duration when I start a timer and get reminded when it is up, so that I never forget a running timer.
 - As a user, I want to quickly log a past activity in under 20 seconds, so that forgetting to start the timer does not break my records.
-- As a user, I want to set weekly hour budgets per category and see actual vs budget at any time, so that I know where I am over- or under-spending my time.
-- As a user, I want to decide manually, at weekly planning time, whether to carry each category's surplus or deficit into the next week, so that I stay in control of cross-week adjustments.
+- As a user, I want to plan my week on a Monday-to-Sunday board, adding items (category + expected duration, no time-of-day) to each day and reordering them by drag and drop, so that planning matches how I actually schedule.
+- As a user, I want to see planned vs actual per category at any time, so that I know where I am over- or under-spending my time.
 - As a user, I want to mark categories as Core / Supportive / Social / Rest, so that the system can show my "effective work time" (Core + Supportive) the way Lyubishchev tracked it.
 - As a user, I want to see how much of my daily recording target is still unrecorded, so that invisible time leaks become visible.
-- As a user, I want to attach a Microsoft To Do task to a time entry, so that I can see the cumulative total time a task has cost me across days.
+- As a user, I want to attach a Microsoft To Do task to a time entry (picked from a list-grouped menu with due dates), so that I can see the cumulative total time a task has cost me across days.
+- As a user, I want to mark a task done in Chronica and have the completion sync back to Microsoft To Do, seeing today's completions in their own tab.
+- As a user, I want one-tap quick-start chips on the timer for everything I planned today, so that starting a planned session takes a single click.
 - As a user, I want to trigger an AI Retro at weekly planning, so that I get an honest analysis of last week and a reality check on next week's plan. (Phase 2)
 - As a user, I want the AI to remember my long-term patterns (real pace, recurring overruns), so that its advice improves over time. (Phase 2)
 
@@ -50,30 +52,30 @@ Delivery is split into two phases:
 - The system must allow editing and deleting any time entry (category, duration, date, task link).
 - Recording is event-plus-duration oriented. A start timestamp is stored for week attribution, but the UI does not require or emphasize "from HH:MM to HH:MM" scheduling.
 
-### Weekly Budget and Settlement (Phase 1)
+### Day-Based Planning Board and Settlement (Phase 1, revised)
 
-- The week starts on Monday.
-- The system must let the user create a weekly plan assigning budgeted hours per category.
-- The system must show a live settlement view at any time: per category, budget vs actual, with over/under difference. There is no separate "generate report" action.
+- The week starts on Monday. Planning is a board of seven day columns (Monday–Sunday).
+- Each day accepts planned items: a category plus an expected duration. No time-of-day scheduling — items simply stack in order within the day.
+- Items can be reordered and moved between days by drag and drop (long-press), working with both mouse and touch.
+- Above the board, a read-only status strip shows each category's execution for the week (actual vs planned with the signed difference). It is informational only.
+- The system must show a live settlement view at any time: per category, planned vs actual, with over/under difference. There is no separate "generate report" action.
 - A time entry belongs to the week in which it started, even if it crosses midnight into the next week.
 - The settlement view must also show effective work time (sum of Core + Supportive categories) for the week.
+- (Removed) Weekly hour budgets and cross-week rollover/carry are no longer part of the product.
 
-### Cross-Week Rollover (Phase 1)
+### Unrecorded Time (Phase 1, revised)
 
-- At weekly planning time, the system must show each category's balance for recent weeks and the historical cumulative balance.
-- Carrying a surplus or deficit into the next week is a manual, per-category decision by the user during planning.
-- Carried amounts are snapshotted when the plan is saved. Editing past weeks' entries afterward does not retroactively change an already-saved plan.
-
-### Unrecorded Time (Phase 1)
-
-- The user must be able to set a daily target of recorded hours (e.g., 14 hours per day).
-- The system must show, per day and per week, recorded time vs the target, making the unrecorded gap visible.
+- There is no fixed daily recording target; the target for each day is whatever the planning board scheduled for that day.
+- The system must show, per day and per week, recorded time vs planned time, making the unrecorded gap visible.
+- The timer page must offer quick-start chips for today's planned items: tapping one starts a timer on that category with the item's expected duration.
 
 ### Microsoft To Do Integration (Phase 1)
 
 - The user signs in with Google. A Microsoft account can additionally be linked (OAuth) purely to access To Do data; Microsoft login is not a sign-in method.
-- The system must fetch To Do task title, description, and due date.
-- Integration is read-only. Tasks are an optional annotation on time entries; the timer's primary subject is always the category.
+- The system must fetch To Do task title, description, due date, and list, presenting tasks grouped by list with due dates; URL-only titles render as clickable links.
+- Tasks are an optional annotation on time entries; the timer's primary subject is always the category. The task binding on an entry can be changed or cleared when editing it.
+- Write-back is limited to one operation: marking a task completed from Chronica syncs the completed status to Microsoft To Do. Nothing else is written.
+- Completed-in-Chronica tasks appear in a "Completed today" tab and clear automatically once the day passes.
 - The system must show cumulative time per task across all entries and days (the "time-cost database").
 
 ### AI Retro and Planning Advice (Phase 2)
@@ -97,6 +99,8 @@ Delivery is split into two phases:
 ### Monthly and Annual Summaries (Phase 2)
 
 - The system must provide monthly and annual summary views: total hours per category and group, effective work time trends, and activity counts (e.g., number of entertainment sessions), in the spirit of Lyubishchev's yearly reports.
+- The summary must include a weekly planned-vs-actual bar chart per category, toggleable between planned only, actual only, or both.
+- The summary must include a bar chart of each category's average recorded time per week over a selectable window (1, 3, 6, or 12 months).
 
 ---
 
@@ -108,12 +112,14 @@ Delivery is split into two phases:
 - [ ] Given a timer has been running for the configured hard cap (default 4h), when the cap is reached, then the timer stops automatically, the entry is saved with the cap duration, and the entry is flagged "needs confirmation".
 - [ ] Given a timer is running on category A, when the user starts a timer on category B, then the category A session is stopped and saved automatically and the category B timer starts.
 - [ ] Given the user forgot to time an activity, when they use quick add with category and duration, then a time entry is created without a timer.
-- [ ] Given the weekly plan has Reading = 5h and actual entries total 6h, when the user opens the settlement view mid-week, then Reading shows +1h over budget without any "generate" step.
+- [ ] Given this week's board plans Reading = 5h and actual entries total 6h, when the user opens the settlement view mid-week, then Reading shows +1h over plan without any "generate" step.
 - [ ] Given a timer starts Sunday 23:00 and stops Monday 01:00, when settlements are viewed, then the full 2h belongs to the week containing Sunday.
-- [ ] Given last week ended with Reading at −2h, when the user plans the next week, then the system shows the −2h balance and the cumulative history, and only applies rollover to the categories the user explicitly chooses.
-- [ ] Given a plan was saved with a rollover based on last week's numbers, when the user later edits last week's entries, then the saved plan's numbers do not change.
-- [ ] Given the daily recording target is 14h and 9h are recorded today, then the dashboard shows 5h unrecorded for the day.
-- [ ] Given a Microsoft account is linked, when the user starts a timer, then they can optionally pick a To Do task, and the task's cumulative total time updates when the entry is saved.
+- [ ] Given items are planned across the week, when the user long-presses and drags an item to another day (mouse or touch), then it moves to that column and the order persists.
+- [ ] Given today's board plans 14h and 9h are recorded, then the timer page shows 5h of planned time remaining.
+- [ ] Given Reading 30m is planned today, when the user taps its quick-start chip, then a timer starts on Reading with a 30-minute expected duration.
+- [ ] Given a Microsoft account is linked, when the user starts a timer, then they can optionally pick a To Do task (grouped by list, with due dates), and the task's cumulative total time updates when the entry is saved.
+- [ ] Given a task is checked off on the Tasks page, then its status becomes completed in Microsoft To Do and it appears under "Completed today" until the day ends.
+- [ ] Given last week has zero recorded entries, then the AI Retro button is disabled and the server refuses to run it. (Phase 2)
 - [ ] Given a category has time entries, when the user deletes it, then it is archived and past statistics still include it.
 - [ ] Given the execution/timer interface is open, then category descriptions are not visible anywhere on it.
 
@@ -142,9 +148,10 @@ Delivery is split into two phases:
 ## Out of Scope
 
 - Native mobile app and mobile push notifications. Web + RWD only; reminders rely on browser notifications.
-- Two-way sync with Microsoft To Do. Read-only; nothing is written back or marked complete in To Do.
+- General two-way sync with Microsoft To Do. The single exception is completing a task from Chronica; no other fields are ever written back.
 - Multi-user, sharing, or team features. Single-user personal tool.
-- Calendar integration (e.g., Google Calendar) and any "HH:MM to HH:MM" schedule/timeline planning view.
+- Calendar integration (e.g., Google Calendar) and any "HH:MM to HH:MM" schedule/timeline planning view. The planning board is day-granular only.
+- Weekly hour budgets and cross-week rollover (removed in the v2 revision in favor of the day board).
 - Automatic activity tracking (screen time, app usage detection). All records are user-initiated.
 - Offline mode / PWA, and data export (CSV) in this version.
 - Other time management methods (Pomodoro, etc.).
@@ -156,5 +163,4 @@ Delivery is split into two phases:
 - **Week start day** is fixed to Monday for now; making it configurable is deferred.
 - **Category groups**: the four Lyubishchev groups (Core / Supportive / Social / Rest) are fixed. If this proves too rigid, a simpler "is core work" boolean is the fallback.
 - **AI long-term memory shape** (what exactly is stored and how it is summarized over time) needs its own design pass before Phase 2 implementation.
-- **Rollover snapshot vs later edits**: accepted trade-off — plans are snapshots; a small indicator showing "past week edited after planning" could be added later.
 - Technical constraints stated by the owner (kept out of behavioral spec): Next.js + TypeScript, Supabase, Mastra Agent with OpenAI-standard LLM provider, Google sign-in with Microsoft account linking, unit tests required, clean software architecture. UI: minimalist, dark theme, RWD, no "AI-looking" design.
