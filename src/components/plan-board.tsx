@@ -89,7 +89,7 @@ function ItemCard({
         aria-hidden
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-sm font-medium">
+        <span className="text-sm font-medium break-words">
           {category?.name ?? "Unknown"}
         </span>
         <span className="flex items-center gap-1.5">

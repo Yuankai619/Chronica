@@ -72,7 +72,10 @@ function BarRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(6rem,10rem)_1fr] items-center gap-3">
-      <Badge variant={group} className="justify-self-start truncate">
+      <Badge
+        variant={group}
+        className="justify-self-start break-words whitespace-normal"
+      >
         {name}
       </Badge>
       <div className="flex flex-col gap-1">
