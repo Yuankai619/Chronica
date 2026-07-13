@@ -18,7 +18,7 @@ Delivery is split into two phases:
 - As a user, I want to quickly log a past activity in under 20 seconds, so that forgetting to start the timer does not break my records.
 - As a user, I want to plan my week on a Monday-to-Sunday board, adding items (category + expected duration, no time-of-day) to each day and reordering them by drag and drop, so that planning matches how I actually schedule.
 - As a user, I want to see planned vs actual per category at any time, so that I know where I am over- or under-spending my time.
-- As a user, I want to mark categories as Core / Supportive / Social / Rest, so that the system can show my "effective work time" (Core + Supportive) the way Lyubishchev tracked it.
+- As a user, I want categories to be entirely my own — no fixed grouping imposed by the system.
 - As a user, I want to see how much of my daily recording target is still unrecorded, so that invisible time leaks become visible.
 - As a user, I want to attach a Microsoft To Do task to a time entry (picked from a list-grouped menu with due dates), so that I can see the cumulative total time a task has cost me across days.
 - As a user, I want to mark a task done in Chronica and have the completion sync back to Microsoft To Do, seeing today's completions in their own tab.
@@ -33,7 +33,7 @@ Delivery is split into two phases:
 ### Categories (Phase 1)
 
 - The system must support creating, editing, archiving, and deleting categories.
-- Each category must have: name, group (Core Work / Supportive Work / Social Work / Rest), and an optional description.
+- Each category must have: name and an optional description. There are no fixed groups; each category gets a stable accent color automatically.
 - The category description must be visible only in the category management (admin) area, never on the execution/timer interface. Its purpose is to give the AI context about what the category means.
 - Deleting a category with existing time entries must archive it instead of hard-deleting; historical statistics must remain intact.
 
@@ -60,7 +60,6 @@ Delivery is split into two phases:
 - Above the board, a read-only status strip shows each category's execution for the week (actual vs planned with the signed difference). It is informational only.
 - The system must show a live settlement view at any time: per category, planned vs actual, with over/under difference. There is no separate "generate report" action.
 - A time entry belongs to the week in which it started, even if it crosses midnight into the next week.
-- The settlement view must also show effective work time (sum of Core + Supportive categories) for the week.
 - (Removed) Weekly hour budgets and cross-week rollover/carry are no longer part of the product.
 
 ### Unrecorded Time (Phase 1, revised)
@@ -68,6 +67,13 @@ Delivery is split into two phases:
 - There is no fixed daily recording target; the target for each day is whatever the planning board scheduled for that day.
 - The system must show, per day and per week, recorded time vs planned time, making the unrecorded gap visible.
 - The timer page must offer quick-start chips for today's planned items: tapping one starts a timer on that category with the item's expected duration.
+
+### Calendar-Driven Auto Timing (Phase 1, v3)
+
+- Calendar-synced planned items with an assigned category auto-start a timer session when their time window begins, attributed to that category from the event's start time.
+- While a calendar session runs, manual timing is locked: no other timer can be started until the session ends or the user stops it early. Stopping early is always allowed.
+- The session ends automatically at the event's end time (even if the browser was closed) and is saved without needing confirmation.
+- The calendar session display is visually distinct from manual timing (blue accent, event title, and the concrete time window).
 
 ### Microsoft To Do Integration (Phase 1)
 
@@ -122,6 +128,7 @@ Delivery is split into two phases:
 - [ ] Given last week has zero recorded entries, then the AI Retro button is disabled and the server refuses to run it. (Phase 2)
 - [ ] Given a category has time entries, when the user deletes it, then it is archived and past statistics still include it.
 - [ ] Given the execution/timer interface is open, then category descriptions are not visible anywhere on it.
+- [ ] Given a categorized calendar item's window begins, then a locked calendar session starts automatically, manual timing is refused until it ends or is stopped early, and it saves exactly at the window bound when left alone.
 
 ### Phase 2
 
@@ -161,6 +168,5 @@ Delivery is split into two phases:
 ## Open Questions / Notes
 
 - **Week start day** is fixed to Monday for now; making it configurable is deferred.
-- **Category groups**: the four Lyubishchev groups (Core / Supportive / Social / Rest) are fixed. If this proves too rigid, a simpler "is core work" boolean is the fallback.
 - **AI long-term memory shape** (what exactly is stored and how it is summarized over time) needs its own design pass before Phase 2 implementation.
 - Technical constraints stated by the owner (kept out of behavioral spec): Next.js + TypeScript, Supabase, Mastra Agent with OpenAI-standard LLM provider, Google sign-in with Microsoft account linking, unit tests required, clean software architecture. UI: minimalist, dark theme, RWD, no "AI-looking" design.

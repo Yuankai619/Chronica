@@ -50,6 +50,11 @@ Repo-installed skills (symlinked into `.claude/skills/`):
 
 - The week starts on **Monday**. An entry belongs to the week in which it
   **started**, even across midnight (`src/lib/week.ts`).
+- Categories are purely user-defined (no fixed groups); badge colors come
+  from a stable hash of the category id.
+- Calendar-synced planned items with a category auto-start **locked** timer
+  sessions for their window (`src/server/timer.ts`); manual timing is
+  refused while one runs.
 - Only one timer may run at a time; starting a new one stops and saves the old one.
 - Timer truth lives in **server-side timestamps**, never client clocks.
 - Deleting a category with entries **archives** it; history must stay intact.
