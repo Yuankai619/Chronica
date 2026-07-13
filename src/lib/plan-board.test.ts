@@ -43,6 +43,7 @@ function item(
     title: null,
     start_at: null,
     end_at: null,
+    auto_timer_done: false,
     created_at: "",
   };
 }

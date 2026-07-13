@@ -31,6 +31,7 @@ export async function saveAndClearSession(
   now: Date,
 ): Promise<{ error?: string }> {
   const settled = settleSession(session, now);
+  const isCalendar = session.planned_item_id !== null;
 
   const { error: insertError } = await supabase.from("time_entries").insert({
     user_id: session.user_id,
@@ -38,7 +39,9 @@ export async function saveAndClearSession(
     started_at: session.started_at,
     duration_minutes: settled.durationMinutes,
     source: "timer",
-    needs_confirmation: settled.needsConfirmation,
+    // A calendar session ending at its window bound is expected, not an
+    // anomaly needing review.
+    needs_confirmation: isCalendar ? false : settled.needsConfirmation,
     todo_task_id: session.todo_task_id,
     todo_task_title: session.todo_task_title,
     todo_list_id: session.todo_list_id,
@@ -50,6 +53,13 @@ export async function saveAndClearSession(
     .delete()
     .eq("id", session.id);
   if (deleteError) return { error: deleteError.message };
+
+  if (isCalendar) {
+    await supabase
+      .from("planned_items")
+      .update({ auto_timer_done: true })
+      .eq("id", session.planned_item_id!);
+  }
 
   return {};
 }
@@ -76,4 +86,66 @@ export async function getReconciledSession(
     return null;
   }
   return session;
+}
+
+/**
+ * Auto-starts a locked timer session for a calendar item whose window is
+ * live (category assigned, not yet run). A running manual session is
+ * stopped and saved first; an already-running calendar session wins.
+ * Returns the current session after reconciliation.
+ */
+export async function ensureCalendarSession(
+  supabase: Client,
+  userId: string,
+): Promise<TimerSession | null> {
+  const session = await getReconciledSession(supabase, userId);
+  if (session?.planned_item_id) return session;
+
+  const nowIso = new Date().toISOString();
+  const { data: dueItem } = await supabase
+    .from("planned_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("auto_timer_done", false)
+    .not("gcal_event_id", "is", null)
+    .not("category_id", "is", null)
+    .lte("start_at", nowIso)
+    .gt("end_at", nowIso)
+    .order("start_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (
+    !dueItem ||
+    !dueItem.category_id ||
+    !dueItem.start_at ||
+    !dueItem.end_at
+  ) {
+    return session;
+  }
+
+  if (session) {
+    const saved = await saveAndClearSession(supabase, session, new Date());
+    if (saved.error) return session;
+  }
+
+  const durationMinutes = Math.max(
+    1,
+    Math.round(
+      (Date.parse(dueItem.end_at) - Date.parse(dueItem.start_at)) / 60_000,
+    ),
+  );
+
+  // Cap = event duration, so the standard reconciliation ends the session
+  // exactly at the window bound even if the browser is closed.
+  const { error } = await supabase.from("timer_sessions").insert({
+    user_id: userId,
+    category_id: dueItem.category_id,
+    started_at: dueItem.start_at,
+    expected_minutes: durationMinutes,
+    cap_minutes: durationMinutes,
+    planned_item_id: dueItem.id,
+  });
+  if (error && error.code !== "23505") return session;
+
+  return getReconciledSession(supabase, userId);
 }

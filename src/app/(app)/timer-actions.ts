@@ -47,6 +47,12 @@ export async function startTimer(formData: FormData): Promise<ActionResult> {
 
   // Stop-and-save any running session (also reconciles a capped one).
   const current = await getReconciledSession(supabase, user.id);
+  if (current?.planned_item_id) {
+    return {
+      error:
+        "A calendar session is running — manual timing is locked until it ends or you stop it.",
+    };
+  }
   if (current) {
     const saved = await saveAndClearSession(supabase, current, new Date());
     if (saved.error) return saved;
