@@ -8,6 +8,8 @@ import { formatDuration } from "@/lib/entries";
 import { formatSignedDuration } from "@/lib/settlement";
 import { PlanBoard } from "@/components/plan-board";
 import { RetroCard } from "@/components/retro-card";
+import { CalendarSyncButton } from "@/components/calendar-sync-button";
+import { isGoogleLinked } from "@/server/google-calendar";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata = { title: "Planning — Chronica" };
@@ -39,6 +41,9 @@ export default async function PlanningPage({
   const reviewWeekStart = new Date(`${reviewWeekKey}T00:00:00`);
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const lastWeekKeys = weekDayKeys(reviewWeekStart);
 
@@ -78,6 +83,8 @@ export default async function PlanningPage({
       .lt("started_at", weekStart.toISOString()),
   ]);
 
+  const gcalLinked = await isGoogleLinked(supabase, user!.id);
+
   const sorted = sortCategories(categories ?? []);
   const status = computeWeekStatus(
     sorted,
@@ -92,7 +99,8 @@ export default async function PlanningPage({
           Plan · week of{" "}
           <span className="font-mono tabular-nums">{weekKey}</span>
         </h1>
-        <nav className="flex gap-3 text-sm">
+        <nav className="flex items-center gap-3 text-sm">
+          {gcalLinked ? <CalendarSyncButton weekKey={weekKey} /> : null}
           <Link
             className="text-muted hover:text-foreground"
             href={`/planning?week=${shiftWeek(weekStart, -1)}`}

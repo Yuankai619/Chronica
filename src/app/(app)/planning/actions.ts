@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseDurationInput } from "@/lib/entries";
+import { syncCalendarWeek } from "@/server/google-calendar";
 
 export interface ActionResult {
   error?: string;
@@ -105,4 +106,44 @@ export async function movePlannedItem(
   revalidatePath("/planning");
   revalidatePath("/");
   return {};
+}
+
+/** Assigns (or clears) the category of a planned item — used for
+ * calendar-synced items that arrive without one. */
+export async function setPlannedItemCategory(
+  id: string,
+  categoryId: string | null,
+): Promise<ActionResult> {
+  const { supabase } = await getAuthed();
+
+  const { error } = await supabase
+    .from("planned_items")
+    .update({ category_id: categoryId })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/planning");
+  revalidatePath("/");
+  return {};
+}
+
+/** Pulls the latest Google Calendar events into the week's board. */
+export async function refreshCalendarSync(
+  weekKey: string,
+): Promise<
+  ActionResult & { added?: number; updated?: number; removed?: number }
+> {
+  const { supabase, user } = await getAuthed();
+
+  if (!DAY_RE.test(weekKey)) return { error: "Invalid week." };
+  const weekStart = new Date(`${weekKey}T00:00:00`);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const result = await syncCalendarWeek(supabase, user.id, weekStart, weekEnd);
+  if (result.error) return { error: result.error };
+
+  revalidatePath("/planning");
+  revalidatePath("/");
+  return result;
 }
