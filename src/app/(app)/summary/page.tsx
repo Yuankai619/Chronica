@@ -232,7 +232,7 @@ export default async function SummaryPage({
                     style={{
                       height: `${Math.round((minutes / trendMax) * 100)}%`,
                     }}
-                    title={`${MONTHS[i]}: ${formatDuration(minutes)}`}
+                    aria-label={`${MONTHS[i]}: ${formatDuration(minutes)}`}
                   />
                 </div>
                 <span className="microlabel">{MONTHS[i]}</span>

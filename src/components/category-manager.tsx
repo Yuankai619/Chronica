@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 function CategoryForm({
   category,
@@ -89,6 +90,7 @@ function CategoryForm({
 function CategoryRow({ category }: { category: Category }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const archived = category.archived_at !== null;
 
   if (editing) {
@@ -139,16 +141,24 @@ function CategoryRow({ category }: { category: Category }) {
           variant="danger"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            if (!confirm(`Delete "${category.name}"?`)) return;
-            startTransition(async () => {
-              await deleteCategory(category.id);
-            });
-          }}
+          onClick={() =>
+            confirm.request(() =>
+              startTransition(async () => {
+                await deleteCategory(category.id);
+              }),
+            )
+          }
         >
           Delete
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirm.open}
+        title={`Delete "${category.name}"?`}
+        description="If it has time entries it will be archived instead, keeping history intact."
+        onConfirm={confirm.confirm}
+        onCancel={confirm.cancel}
+      />
     </li>
   );
 }

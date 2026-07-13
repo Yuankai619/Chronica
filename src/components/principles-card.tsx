@@ -7,7 +7,7 @@ import {
 } from "@/app/(app)/settings/principles-actions";
 import type { Tables } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 
 type Principle = Tables<"principles">;
@@ -39,7 +39,9 @@ export function PrinciplesCard({ principles }: { principles: Principle[] }) {
               key={principle.id}
               className="flex items-center justify-between gap-3 border-b border-hairline py-2"
             >
-              <span className="text-sm">{principle.content}</span>
+              <span className="min-w-0 text-sm break-words whitespace-pre-wrap">
+                {principle.content}
+              </span>
               <Button
                 variant="danger"
                 size="sm"
@@ -56,8 +58,20 @@ export function PrinciplesCard({ principles }: { principles: Principle[] }) {
           ))}
         </ul>
       ) : null}
-      <form ref={formRef} action={submit} className="flex gap-2">
-        <Input name="content" placeholder="New principle" maxLength={500} />
+      <form ref={formRef} action={submit} className="flex items-start gap-2">
+        <Textarea
+          name="content"
+          placeholder="New principle — Enter to add, Shift+Enter for a new line"
+          maxLength={500}
+          rows={2}
+          className="field-sizing-content max-h-40 min-h-9 resize-none break-words"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
         <Button type="submit" disabled={pending}>
           Add
         </Button>
