@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { dayKey } from "@/lib/unrecorded";
+import { dayKeyInTz } from "@/lib/tz";
 import { googleExpiresAt, refreshGoogleTokens } from "@/server/google-oauth";
 
 type Client = SupabaseClient<Database>;
@@ -148,6 +148,7 @@ export async function syncCalendarWeek(
   userId: string,
   weekStart: Date,
   weekEnd: Date,
+  timeZone: string,
 ): Promise<SyncResult> {
   const token = await getGoogleAccessToken(supabase, userId);
   if (!token) {
@@ -161,8 +162,8 @@ export async function syncCalendarWeek(
   if (fetched.error !== undefined) return { error: fetched.error };
   const events = fetched.events;
 
-  const firstDay = dayKey(weekStart);
-  const lastDay = dayKey(new Date(weekEnd.getTime() - 1));
+  const firstDay = dayKeyInTz(weekStart, timeZone);
+  const lastDay = dayKeyInTz(new Date(weekEnd.getTime() - 1), timeZone);
   const { data: existing, error: readError } = await supabase
     .from("planned_items")
     .select("*")
@@ -201,7 +202,7 @@ export async function syncCalendarWeek(
   // land earliest-first.
   for (const event of events) {
     seenIds.add(event.id);
-    const day = dayKey(event.startAt);
+    const day = dayKeyInTz(event.startAt, timeZone);
     const expectedMinutes = Math.max(
       1,
       Math.round((event.endAt.getTime() - event.startAt.getTime()) / 60_000),

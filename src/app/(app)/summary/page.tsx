@@ -3,7 +3,13 @@ import { formatDuration } from "@/lib/entries";
 import { monthlyRecordedTrend, summarizePeriod } from "@/lib/summary";
 import { CategoryBadge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
+import {
+  addDaysKey,
+  dayKeyInTz,
+  weekStartKeyOf,
+  zonedDayStart,
+} from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 import { plannedByCategory } from "@/lib/plan-board";
 import { actualsByCategory } from "@/lib/settlement";
 import {
@@ -31,12 +37,14 @@ const MONTHS = [
   "Dec",
 ];
 
-function parsePeriod(raw: string | undefined): {
+function parsePeriod(
+  raw: string | undefined,
+  todayKey: string,
+): {
   mode: "month" | "year";
   year: number;
   month: number; // 0-based, only for month mode
 } {
-  const now = new Date();
   if (raw && /^\d{4}$/.test(raw)) {
     return { mode: "year", year: Number(raw), month: 0 };
   }
@@ -44,7 +52,11 @@ function parsePeriod(raw: string | undefined): {
     const [y, m] = raw.split("-").map(Number);
     if (m >= 1 && m <= 12) return { mode: "month", year: y, month: m - 1 };
   }
-  return { mode: "month", year: now.getFullYear(), month: now.getMonth() };
+  return {
+    mode: "month",
+    year: Number(todayKey.slice(0, 4)),
+    month: Number(todayKey.slice(5, 7)) - 1,
+  };
 }
 
 export default async function SummaryPage({
@@ -53,12 +65,21 @@ export default async function SummaryPage({
   searchParams: Promise<{ period?: string; week?: string }>;
 }) {
   const { period, week } = await searchParams;
-  const { mode, year, month } = parsePeriod(period);
+  const timeZone = await getUserTimeZone();
+  const todayKey = dayKeyInTz(new Date(), timeZone);
+  const { mode, year, month } = parsePeriod(period, todayKey);
 
-  const start =
-    mode === "year" ? new Date(year, 0, 1) : new Date(year, month, 1);
-  const end =
-    mode === "year" ? new Date(year + 1, 0, 1) : new Date(year, month + 1, 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const startKey =
+    mode === "year" ? `${year}-01-01` : `${year}-${pad(month + 1)}-01`;
+  const endKey =
+    mode === "year"
+      ? `${year + 1}-01-01`
+      : month === 11
+        ? `${year + 1}-01-01`
+        : `${year}-${pad(month + 2)}-01`;
+  const start = zonedDayStart(startKey, timeZone);
+  const end = zonedDayStart(endKey, timeZone);
   const label = mode === "year" ? String(year) : `${MONTHS[month]} ${year}`;
 
   const prev =
@@ -70,13 +91,13 @@ export default async function SummaryPage({
       ? String(year + 1)
       : `${month === 11 ? year + 1 : year}-${String(month === 11 ? 1 : month + 2).padStart(2, "0")}`;
 
-  const weekStart =
+  const weekKey =
     week && /^\d{4}-\d{2}-\d{2}$/.test(week)
-      ? getWeekStart(new Date(`${week}T00:00:00`))
-      : getWeekStart(new Date());
-  const weekEnd = getWeekEnd(weekStart);
-  const weekKey = getWeekKey(weekStart);
-  const weekEndKey = getWeekKey(new Date(weekEnd.getTime() - 1));
+      ? weekStartKeyOf(week)
+      : weekStartKeyOf(todayKey);
+  const weekStart = zonedDayStart(weekKey, timeZone);
+  const weekEnd = zonedDayStart(addDaysKey(weekKey, 7), timeZone);
+  const weekEndKey = addDaysKey(weekKey, 6);
   const yearAgo = new Date();
   yearAgo.setDate(yearAgo.getDate() - 365);
 
@@ -148,13 +169,12 @@ export default async function SummaryPage({
     }));
 
   function shiftWeek(weeks: number): string {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + weeks * 7);
-    return getWeekKey(d);
+    return addDaysKey(weekKey, weeks * 7);
   }
 
   const summary = summarizePeriod(categories ?? [], entries ?? []);
-  const trend = mode === "year" ? monthlyRecordedTrend(entries ?? []) : null;
+  const trend =
+    mode === "year" ? monthlyRecordedTrend(entries ?? [], timeZone) : null;
   const trendMax = trend ? Math.max(...trend, 1) : 1;
 
   return (

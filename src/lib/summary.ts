@@ -1,5 +1,6 @@
 import type { Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
+import { dayKeyInTz } from "@/lib/tz";
 
 export interface CategorySummary {
   category: Category;
@@ -48,11 +49,15 @@ export function summarizePeriod(
   };
 }
 
-/** Recorded minutes per month (0-11) for an annual trend. */
-export function monthlyRecordedTrend(entries: TimeEntry[]): number[] {
+/** Recorded minutes per month (0-11) of the timezone's calendar year. */
+export function monthlyRecordedTrend(
+  entries: TimeEntry[],
+  timeZone: string,
+): number[] {
   const months = new Array<number>(12).fill(0);
   for (const entry of entries) {
-    months[new Date(entry.started_at).getMonth()] += entry.duration_minutes;
+    const key = dayKeyInTz(new Date(entry.started_at), timeZone);
+    months[Number(key.slice(5, 7)) - 1] += entry.duration_minutes;
   }
   return months;
 }

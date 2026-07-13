@@ -2,28 +2,18 @@ import type { Tables } from "@/lib/database.types";
 import type { TimeEntry } from "@/lib/entries";
 import { actualsByCategory } from "@/lib/settlement";
 import type { Category } from "@/lib/categories";
-import { dayKey } from "@/lib/unrecorded";
 
 export type PlannedItem = Tables<"planned_items">;
 
-/** The 7 day keys (YYYY-MM-DD) of a Monday-started week. */
-export function weekDayKeys(weekStart: Date): string[] {
-  const keys: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    keys.push(dayKey(d));
-  }
-  return keys;
-}
+import { weekDayKeysOf } from "@/lib/tz";
 
-/** Items per day of the week, each column sorted by position. */
+/** Items per day of the week (Monday key), each column sorted by position. */
 export function groupItemsByDay(
-  weekStart: Date,
+  weekKey: string,
   items: PlannedItem[],
 ): Map<string, PlannedItem[]> {
   const byDay = new Map<string, PlannedItem[]>(
-    weekDayKeys(weekStart).map((key) => [key, []]),
+    weekDayKeysOf(weekKey).map((key) => [key, []]),
   );
   for (const item of items) {
     byDay.get(item.day)?.push(item);

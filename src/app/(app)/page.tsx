@@ -4,7 +4,8 @@ import { ensureCalendarSession } from "@/server/timer";
 import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
 import { formatDuration } from "@/lib/entries";
-import { recordedByDay, dayKey } from "@/lib/unrecorded";
+import { dayKeyInTz, zonedDayStart } from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 import { Card } from "@/components/ui/card";
 
 export default async function Home() {
@@ -13,9 +14,9 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayKey = dayKey(new Date());
+  const timeZone = await getUserTimeZone();
+  const todayKey = dayKeyInTz(new Date(), timeZone);
+  const todayStart = zonedDayStart(todayKey, timeZone);
 
   const [
     { data: categories },
@@ -68,7 +69,10 @@ export default async function Home() {
     (s, i) => s + i.expected_minutes,
     0,
   );
-  const recordedToday = recordedByDay(todayEntries ?? []).get(todayKey) ?? 0;
+  const recordedToday = (todayEntries ?? []).reduce(
+    (sum, e) => sum + e.duration_minutes,
+    0,
+  );
   const remaining = Math.max(0, plannedMinutes - recordedToday);
 
   return (

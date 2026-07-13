@@ -6,9 +6,9 @@ import {
   groupItemsByDay,
   plannedByCategory,
   plannedByDay,
-  weekDayKeys,
   type PlannedItem,
 } from "./plan-board";
+import { weekDayKeysOf } from "./tz";
 import { computeWeekSettlement, formatSignedDuration } from "./settlement";
 import { computeAccuracy, isLikelyOverrun } from "./accuracy";
 import { weekDayGaps } from "./unrecorded";
@@ -71,13 +71,13 @@ function entry(
   };
 }
 
-const monday = new Date(2026, 6, 13);
+const monday = "2026-07-13";
 const reading = category("reading");
 const games = category("games");
 
-describe("weekDayKeys / groupItemsByDay", () => {
+describe("weekDayKeysOf / groupItemsByDay", () => {
   it("produces Monday-first day keys and position-sorted columns", () => {
-    const keys = weekDayKeys(monday);
+    const keys = weekDayKeysOf(monday);
     expect(keys[0]).toBe("2026-07-13");
     expect(keys[6]).toBe("2026-07-19");
 
@@ -167,8 +167,9 @@ describe("weekDayGaps (vs planned)", () => {
   it("measures unrecorded time against the day's plan", () => {
     const gaps = weekDayGaps(
       monday,
-      [entry("reading", 540, new Date(2026, 6, 13, 8))],
+      [entry("reading", 540, new Date("2026-07-13T08:00:00Z"))],
       new Map([["2026-07-13", 840]]),
+      "UTC",
     );
     expect(gaps[0].unrecordedMinutes).toBe(300);
     expect(gaps[1].plannedMinutes).toBe(0);

@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseDurationInput } from "@/lib/entries";
-import { weekDayKeys } from "@/lib/plan-board";
+
 import { syncCalendarWeek } from "@/server/google-calendar";
+import { addDaysKey, weekDayKeysOf, zonedDayStart } from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 
 export interface ActionResult {
   error?: string;
@@ -137,11 +139,17 @@ export async function refreshCalendarSync(
   const { supabase, user } = await getAuthed();
 
   if (!DAY_RE.test(weekKey)) return { error: "Invalid week." };
-  const weekStart = new Date(`${weekKey}T00:00:00`);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
+  const timeZone = await getUserTimeZone();
+  const weekStart = zonedDayStart(weekKey, timeZone);
+  const weekEnd = zonedDayStart(addDaysKey(weekKey, 7), timeZone);
 
-  const result = await syncCalendarWeek(supabase, user.id, weekStart, weekEnd);
+  const result = await syncCalendarWeek(
+    supabase,
+    user.id,
+    weekStart,
+    weekEnd,
+    timeZone,
+  );
   if (result.error) return { error: result.error };
 
   revalidatePath("/planning");
@@ -161,18 +169,8 @@ export async function copyLastWeekPlan(
 
   if (!DAY_RE.test(weekKey)) return { error: "Invalid week." };
 
-  const weekStart = new Date(`${weekKey}T00:00:00`);
-  const lastWeekStart = new Date(weekStart);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-
-  const lastWeekDayKeys: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(lastWeekStart);
-    d.setDate(d.getDate() + i);
-    lastWeekDayKeys.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-    );
-  }
+  const thisWeekDayKeys = weekDayKeysOf(weekKey);
+  const lastWeekDayKeys = weekDayKeysOf(addDaysKey(weekKey, -7));
 
   // Fetch last week's manual items only.
   const { data: lastItems, error: fetchError } = await supabase
@@ -191,7 +189,7 @@ export async function copyLastWeekPlan(
   // Map last week's day keys to this week's day keys (same weekday offset).
   const dayMap = new Map<string, string>();
   for (let i = 0; i < 7; i++) {
-    dayMap.set(lastWeekDayKeys[i], weekDayKeys(weekStart)[i]);
+    dayMap.set(lastWeekDayKeys[i], thisWeekDayKeys[i]);
   }
 
   // Find current max position per target day so we append at the bottom.
@@ -199,8 +197,8 @@ export async function copyLastWeekPlan(
     .from("planned_items")
     .select("day, position")
     .eq("user_id", user.id)
-    .gte("day", weekDayKeys(weekStart)[0])
-    .lte("day", weekDayKeys(weekStart)[6]);
+    .gte("day", thisWeekDayKeys[0])
+    .lte("day", thisWeekDayKeys[6]);
 
   const maxPosByDay = new Map<string, number>();
   for (const item of existingItems ?? []) {
