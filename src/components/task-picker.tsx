@@ -68,11 +68,13 @@ function DueBadge({ dueDate }: { dueDate: string | null }) {
 export function TaskPicker({
   tasks,
   name = "task",
+  initial = null,
 }: {
   tasks: TodoTask[];
   name?: string;
+  initial?: TodoTask | null;
 }) {
-  const [selected, setSelected] = useState<TodoTask | null>(null);
+  const [selected, setSelected] = useState<TodoTask | null>(initial);
   const [open, setOpen] = useState(false);
   const groups = groupTasksByList(tasks);
 
@@ -81,7 +83,15 @@ export function TaskPicker({
       <input
         type="hidden"
         name={name}
-        value={selected ? encodeTaskOption(selected) : ""}
+        value={
+          selected
+            ? encodeTaskOption({
+                id: selected.id,
+                title: selected.title,
+                listId: selected.listId,
+              })
+            : ""
+        }
       />
       <button
         type="button"

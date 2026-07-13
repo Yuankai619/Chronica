@@ -2,7 +2,7 @@ import "server-only";
 
 const AUTH_BASE = "https://login.microsoftonline.com";
 
-export const MICROSOFT_SCOPES = "offline_access User.Read Tasks.Read";
+export const MICROSOFT_SCOPES = "offline_access User.Read Tasks.ReadWrite";
 
 export function microsoftConfigured(): boolean {
   return Boolean(

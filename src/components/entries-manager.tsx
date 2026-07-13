@@ -18,6 +18,8 @@ import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { TodoTask } from "@/lib/tasks";
+
+type TaskPickerTasks = TodoTask[] | null | undefined;
 import { TaskPicker } from "@/components/task-picker";
 
 function toLocalInputValue(date: Date): string {
@@ -98,9 +100,23 @@ function EntryForm({
           rows={1}
         />
       </div>
-      {!entry && tasks && tasks.length > 0 ? (
+      {tasks && tasks.length > 0 ? (
         <div className="sm:max-w-96">
-          <TaskPicker tasks={tasks} />
+          <TaskPicker
+            tasks={tasks}
+            initial={
+              entry?.todo_task_id
+                ? (tasks.find((t) => t.id === entry.todo_task_id) ?? {
+                    id: entry.todo_task_id,
+                    title: entry.todo_task_title ?? "Linked task",
+                    listId: entry.todo_list_id ?? "",
+                    listTitle: "Linked",
+                    dueDate: null,
+                    description: null,
+                  })
+                : null
+            }
+          />
         </div>
       ) : null}
       <div className="flex items-center gap-3">
@@ -121,9 +137,11 @@ function EntryForm({
 function EntryRow({
   entry,
   categories,
+  tasks,
 }: {
   entry: TimeEntry;
   categories: Category[];
+  tasks: TaskPickerTasks;
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -136,6 +154,7 @@ function EntryRow({
         <EntryForm
           categories={categories}
           entry={entry}
+          tasks={tasks}
           onDone={() => setEditing(false)}
         />
       </li>
@@ -245,6 +264,7 @@ export function EntriesManager({
                   key={entry.id}
                   entry={entry}
                   categories={categories}
+                  tasks={tasks}
                 />
               ))}
             </ul>

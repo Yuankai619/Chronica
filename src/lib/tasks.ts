@@ -3,12 +3,14 @@
 export interface TaskRef {
   id: string;
   title: string;
+  listId: string | null;
 }
 
 /** A To Do task as fetched from Microsoft Graph (serializable). */
 export interface TodoTask {
   id: string;
   title: string;
+  listId: string;
   listTitle: string;
   /** Naive datetime string from Graph, or null. */
   dueDate: string | null;
@@ -17,16 +19,28 @@ export interface TodoTask {
 }
 
 export function encodeTaskOption(task: TaskRef): string {
-  return JSON.stringify({ id: task.id, title: task.title });
+  return JSON.stringify({
+    id: task.id,
+    title: task.title,
+    listId: task.listId,
+  });
 }
 
 /** Decodes a task form value; "" or malformed input → null. */
 export function decodeTaskOption(raw: unknown): TaskRef | null {
   if (typeof raw !== "string" || raw === "") return null;
   try {
-    const parsed = JSON.parse(raw) as { id?: unknown; title?: unknown };
+    const parsed = JSON.parse(raw) as {
+      id?: unknown;
+      title?: unknown;
+      listId?: unknown;
+    };
     if (typeof parsed.id === "string" && typeof parsed.title === "string") {
-      return { id: parsed.id, title: parsed.title };
+      return {
+        id: parsed.id,
+        title: parsed.title,
+        listId: typeof parsed.listId === "string" ? parsed.listId : null,
+      };
     }
   } catch {
     // fall through

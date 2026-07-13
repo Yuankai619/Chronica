@@ -42,6 +42,7 @@ export async function createEntry(formData: FormData): Promise<ActionResult> {
     source: "manual",
     todo_task_id: task?.id ?? null,
     todo_task_title: task?.title ?? null,
+    todo_list_id: task?.listId ?? null,
   });
   if (error) return { error: error.message };
 
@@ -58,9 +59,21 @@ export async function updateEntry(
   const parsed = parseEntryInput(entryValues(formData));
   if (!parsed.ok) return { error: parsed.error };
 
+  // Task rebinding: only touch task fields when the form included them.
+  const taskFields = formData.has("task")
+    ? (() => {
+        const task = decodeTaskOption(formData.get("task"));
+        return {
+          todo_task_id: task?.id ?? null,
+          todo_task_title: task?.title ?? null,
+          todo_list_id: task?.listId ?? null,
+        };
+      })()
+    : {};
+
   const { error } = await supabase
     .from("time_entries")
-    .update(parsed.input)
+    .update({ ...parsed.input, ...taskFields })
     .eq("id", id);
   if (error) return { error: error.message };
 
