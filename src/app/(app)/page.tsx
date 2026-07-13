@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
-import { getReconciledSession } from "@/server/timer";
+import { ensureCalendarSession } from "@/server/timer";
 import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
 import { formatDuration } from "@/lib/entries";
@@ -24,7 +24,7 @@ export default async function Home() {
     { data: plannedToday },
   ] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
-    getReconciledSession(supabase, user!.id),
+    ensureCalendarSession(supabase, user!.id),
     supabase
       .from("time_entries")
       .select("*")
@@ -37,6 +37,32 @@ export default async function Home() {
   ]);
 
   const tasks = await getOpenTasks(supabase, user!.id);
+
+  // Calendar context for the panel: the active session's event, and the
+  // next upcoming auto-start today (to refresh the page right on time).
+  const activeCalendarItem = session?.planned_item_id
+    ? ((plannedToday ?? []).find((i) => i.id === session.planned_item_id) ??
+      (
+        await supabase
+          .from("planned_items")
+          .select("*")
+          .eq("id", session.planned_item_id)
+          .maybeSingle()
+      ).data)
+    : null;
+  const nowIso = new Date().toISOString();
+  const nextCalendarStartAt =
+    (plannedToday ?? [])
+      .filter(
+        (i) =>
+          i.gcal_event_id !== null &&
+          i.category_id !== null &&
+          !i.auto_timer_done &&
+          i.start_at !== null &&
+          i.start_at > nowIso,
+      )
+      .map((i) => i.start_at!)
+      .sort()[0] ?? null;
 
   const plannedMinutes = (plannedToday ?? []).reduce(
     (s, i) => s + i.expected_minutes,
@@ -54,6 +80,16 @@ export default async function Home() {
           session={session}
           tasks={tasks}
           plannedToday={plannedToday ?? []}
+          calendarEvent={
+            activeCalendarItem
+              ? {
+                  title: activeCalendarItem.title ?? "(untitled event)",
+                  startAt: activeCalendarItem.start_at,
+                  endAt: activeCalendarItem.end_at,
+                }
+              : null
+          }
+          nextCalendarStartAt={nextCalendarStartAt}
         />
         <div className="order-first grid grid-cols-2 gap-3 lg:order-0 lg:grid-cols-1 lg:content-start">
           <Card>

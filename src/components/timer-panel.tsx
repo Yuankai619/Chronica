@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { CalendarClock, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTimer, stopTimer } from "@/app/(app)/timer-actions";
 import type { Tables } from "@/lib/database.types";
@@ -93,10 +94,13 @@ function StartForm({
 function RunningTimer({
   session,
   categoryName,
+  calendarEvent,
 }: {
   session: TimerSession;
   categoryName: string;
+  calendarEvent?: CalendarEventInfo | null;
 }) {
+  const isCalendar = calendarEvent != null;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [now, setNow] = useState(() => Date.now());
@@ -166,17 +170,51 @@ function RunningTimer({
   }, [elapsedMin, session.cap_minutes, router]);
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card
+      className={`relative overflow-hidden ${isCalendar ? "border-[#2b4a63] bg-[#0d141b]" : ""}`}
+    >
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-accent"
+        className={`pointer-events-none absolute inset-x-0 top-0 ${isCalendar ? "h-0.5 bg-[#7cc0f5]" : "h-px bg-accent"}`}
         aria-hidden
       />
       <div className="flex flex-col items-start gap-2">
-        <p className="microlabel">Recording · {categoryName}</p>
-        <p className="font-mono text-6xl font-semibold tracking-tight tabular-nums">
+        {isCalendar ? (
+          <>
+            <p className="flex items-center gap-1.5 text-[0.6875rem] tracking-[0.14em] text-[#7cc0f5] uppercase">
+              <CalendarClock className="size-3.5" aria-hidden />
+              Calendar session · {categoryName}
+            </p>
+            <p className="text-sm font-medium break-words">
+              {calendarEvent.title}
+            </p>
+            {calendarEvent.startAt && calendarEvent.endAt ? (
+              <p className="font-mono text-xs text-muted tabular-nums">
+                {new Date(calendarEvent.startAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                –
+                {new Date(calendarEvent.endAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="microlabel">Recording · {categoryName}</p>
+        )}
+        <p
+          className={`font-mono text-6xl font-semibold tracking-tight tabular-nums ${isCalendar ? "text-[#7cc0f5]" : ""}`}
+        >
           {formatElapsed(elapsedSeconds)}
         </p>
-        {session.expected_minutes !== null ? (
+        {isCalendar && session.expected_minutes !== null ? (
+          <p className="text-sm text-muted">
+            Ends automatically in{" "}
+            {Math.max(0, session.expected_minutes - elapsedMin)} min
+          </p>
+        ) : session.expected_minutes !== null ? (
           <p
             className={`text-sm ${expectedReached ? "text-accent" : "text-muted"}`}
           >
@@ -194,13 +232,16 @@ function RunningTimer({
         <Button
           variant="outline"
           disabled={pending}
+          className={
+            isCalendar ? "border-[#2b4a63] hover:border-[#7cc0f5]" : ""
+          }
           onClick={() =>
             startTransition(async () => {
               await stopTimer();
             })
           }
         >
-          {pending ? "Stopping…" : "Stop"}
+          {pending ? "Stopping…" : isCalendar ? "Stop early" : "Stop"}
         </Button>
       </div>
     </Card>
@@ -258,33 +299,73 @@ function QuickStart({
   );
 }
 
+export interface CalendarEventInfo {
+  title: string;
+  startAt: string | null;
+  endAt: string | null;
+}
+
+/** Reloads server data exactly when the next calendar session begins. */
+function CalendarAutoStart({ nextStartAt }: { nextStartAt: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    const delay = Math.max(0, Date.parse(nextStartAt) - Date.now()) + 500;
+    const timeout = setTimeout(() => router.refresh(), delay);
+    return () => clearTimeout(timeout);
+  }, [nextStartAt, router]);
+  return null;
+}
+
 export function TimerPanel({
   categories,
   session,
   tasks,
   plannedToday,
+  calendarEvent = null,
+  nextCalendarStartAt = null,
 }: {
   categories: Category[];
   session: TimerSession | null;
   tasks: TodoTask[] | null;
   plannedToday: PlannedItem[];
+  calendarEvent?: CalendarEventInfo | null;
+  nextCalendarStartAt?: string | null;
 }) {
   const categoryName =
     (session && categories.find((c) => c.id === session.category_id)?.name) ??
     "Unknown category";
 
+  const calendarLocked = session?.planned_item_id != null;
+
   return (
     <div className="flex flex-col gap-8">
-      {session ? (
-        <RunningTimer session={session} categoryName={categoryName} />
+      {nextCalendarStartAt ? (
+        <CalendarAutoStart nextStartAt={nextCalendarStartAt} />
       ) : null}
-      <section className="flex flex-col gap-3">
-        <CardTitle>
-          {session ? "Switch category (saves the current timer)" : "Start"}
-        </CardTitle>
-        <StartForm categories={categories} tasks={tasks} />
-      </section>
-      <QuickStart plannedToday={plannedToday} categories={categories} />
+      {session ? (
+        <RunningTimer
+          session={session}
+          categoryName={categoryName}
+          calendarEvent={calendarLocked ? calendarEvent : null}
+        />
+      ) : null}
+      {calendarLocked ? (
+        <p className="flex items-center gap-2 text-sm text-muted">
+          <Lock className="size-3.5" aria-hidden />
+          Manual timing is locked until this calendar session ends — or stop it
+          early above.
+        </p>
+      ) : (
+        <>
+          <section className="flex flex-col gap-3">
+            <CardTitle>
+              {session ? "Switch category (saves the current timer)" : "Start"}
+            </CardTitle>
+            <StartForm categories={categories} tasks={tasks} />
+          </section>
+          <QuickStart plannedToday={plannedToday} categories={categories} />
+        </>
+      )}
     </div>
   );
 }

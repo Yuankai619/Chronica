@@ -120,6 +120,7 @@ export interface Database {
           title: string | null;
           start_at: string | null;
           end_at: string | null;
+          auto_timer_done: boolean;
           created_at: string;
         };
         Insert: {
@@ -133,6 +134,7 @@ export interface Database {
           title?: string | null;
           start_at?: string | null;
           end_at?: string | null;
+          auto_timer_done?: boolean;
           created_at?: string;
         };
         Update: {
@@ -146,6 +148,7 @@ export interface Database {
           title?: string | null;
           start_at?: string | null;
           end_at?: string | null;
+          auto_timer_done?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -317,6 +320,7 @@ export interface Database {
           started_at: string;
           expected_minutes: number | null;
           cap_minutes: number;
+          planned_item_id: string | null;
           todo_task_id: string | null;
           todo_task_title: string | null;
           todo_list_id: string | null;
@@ -329,6 +333,7 @@ export interface Database {
           started_at?: string;
           expected_minutes?: number | null;
           cap_minutes: number;
+          planned_item_id?: string | null;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;
@@ -341,6 +346,7 @@ export interface Database {
           started_at?: string;
           expected_minutes?: number | null;
           cap_minutes?: number;
+          planned_item_id?: string | null;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;
