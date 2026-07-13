@@ -1,10 +1,19 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_GROUP_LABELS, CATEGORY_GROUPS } from "@/lib/categories";
 import { formatDuration } from "@/lib/entries";
 import { monthlyEffectiveTrend, summarizePeriod } from "@/lib/summary";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
+import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
+import { plannedByCategory } from "@/lib/plan-board";
+import { actualsByCategory } from "@/lib/settlement";
+import {
+  CategoryAverageChart,
+  WeekCompareChart,
+  type RangeRow,
+  type WeekCompareRow,
+} from "@/components/summary-charts";
+import Link from "next/link";
 
 export const metadata = { title: "Summary — Chronica" };
 
@@ -42,9 +51,9 @@ function parsePeriod(raw: string | undefined): {
 export default async function SummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; week?: string }>;
 }) {
-  const { period } = await searchParams;
+  const { period, week } = await searchParams;
   const { mode, year, month } = parsePeriod(period);
 
   const start =
@@ -62,8 +71,24 @@ export default async function SummaryPage({
       ? String(year + 1)
       : `${month === 11 ? year + 1 : year}-${String(month === 11 ? 1 : month + 2).padStart(2, "0")}`;
 
+  const weekStart =
+    week && /^\d{4}-\d{2}-\d{2}$/.test(week)
+      ? getWeekStart(new Date(`${week}T00:00:00`))
+      : getWeekStart(new Date());
+  const weekEnd = getWeekEnd(weekStart);
+  const weekKey = getWeekKey(weekStart);
+  const weekEndKey = getWeekKey(new Date(weekEnd.getTime() - 1));
+  const yearAgo = new Date();
+  yearAgo.setDate(yearAgo.getDate() - 365);
+
   const supabase = await createClient();
-  const [{ data: categories }, { data: entries }] = await Promise.all([
+  const [
+    { data: categories },
+    { data: entries },
+    { data: weekEntries },
+    { data: weekItems },
+    { data: yearEntries },
+  ] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase
       .from("time_entries")
@@ -71,7 +96,61 @@ export default async function SummaryPage({
       .gte("started_at", start.toISOString())
       .lt("started_at", end.toISOString())
       .limit(10000),
+    supabase
+      .from("time_entries")
+      .select("*")
+      .gte("started_at", weekStart.toISOString())
+      .lt("started_at", weekEnd.toISOString()),
+    supabase
+      .from("planned_items")
+      .select("*")
+      .gte("day", weekKey)
+      .lte("day", weekEndKey),
+    supabase
+      .from("time_entries")
+      .select("category_id, duration_minutes, started_at")
+      .gte("started_at", yearAgo.toISOString())
+      .limit(10000),
   ]);
+
+  const weekPlanned = plannedByCategory(weekItems ?? []);
+  const weekActual = actualsByCategory(
+    (weekEntries ?? []) as Parameters<typeof actualsByCategory>[0],
+  );
+  const compareRows: WeekCompareRow[] = (categories ?? []).map((c) => ({
+    name: c.name,
+    group: c.category_group,
+    plannedMinutes: weekPlanned.get(c.id) ?? 0,
+    actualMinutes: weekActual.get(c.id) ?? 0,
+  }));
+
+  const nowMs = yearAgo.getTime() + 365 * 86_400_000;
+  const rangeDays = [30, 90, 180, 365];
+  const rangeTotals = new Map<string, [number, number, number, number]>();
+  for (const e of yearEntries ?? []) {
+    const ageDays = (nowMs - Date.parse(e.started_at)) / 86_400_000;
+    let totals = rangeTotals.get(e.category_id);
+    if (!totals) {
+      totals = [0, 0, 0, 0];
+      rangeTotals.set(e.category_id, totals);
+    }
+    for (const [i, days] of rangeDays.entries()) {
+      if (ageDays <= days) totals[i] += e.duration_minutes;
+    }
+  }
+  const rangeRows: RangeRow[] = (categories ?? [])
+    .filter((c) => rangeTotals.has(c.id))
+    .map((c) => ({
+      name: c.name,
+      group: c.category_group,
+      totals: rangeTotals.get(c.id)!,
+    }));
+
+  function shiftWeek(weeks: number): string {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + weeks * 7);
+    return getWeekKey(d);
+  }
 
   const summary = summarizePeriod(categories ?? [], entries ?? []);
   const trend =
@@ -162,6 +241,36 @@ export default async function SummaryPage({
           </div>
         </div>
       ) : null}
+
+      <Card className="mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="mb-0">
+            Planned vs actual · week of {weekKey}
+          </CardTitle>
+          <nav className="flex gap-3 text-xs">
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/summary?period=${period ?? ""}&week=${shiftWeek(-1)}`}
+            >
+              ← Prev week
+            </Link>
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/summary?period=${period ?? ""}&week=${shiftWeek(1)}`}
+            >
+              Next week →
+            </Link>
+          </nav>
+        </div>
+        <div className="mt-4">
+          <WeekCompareChart rows={compareRows} />
+        </div>
+      </Card>
+
+      <Card className="mb-6">
+        <CardTitle>Average weekly time per category</CardTitle>
+        <CategoryAverageChart rows={rangeRows} />
+      </Card>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {CATEGORY_GROUPS.map((group) => (
