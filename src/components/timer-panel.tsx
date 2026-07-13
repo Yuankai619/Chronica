@@ -258,13 +258,16 @@ function QuickStart({
   const [pending, startTransition] = useTransition();
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
-  if (plannedToday.length === 0) return null;
+  // Only show manual items (not calendar-synced).
+  const manualItems = plannedToday.filter((i) => i.gcal_event_id === null);
+
+  if (manualItems.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-2">
       <CardTitle className="mb-0">Planned today — tap to start</CardTitle>
       <div className="flex flex-wrap gap-2">
-        {plannedToday.map((item) => {
+        {manualItems.map((item) => {
           const category = item.category_id
             ? categoryById.get(item.category_id)
             : undefined;
@@ -296,6 +299,72 @@ function QuickStart({
                 {formatDuration(item.expected_minutes)}
               </span>
             </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function CalendarToday({
+  items,
+  categories,
+}: {
+  items: PlannedItem[];
+  categories: Category[];
+}) {
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  if (items.length === 0) return null;
+
+  function eventTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <CardTitle className="mb-0 flex items-center gap-2">
+        <CalendarClock className="size-4 text-[#7cc0f5]" aria-hidden />
+        Calendar today
+      </CardTitle>
+      <div className="flex flex-col gap-1.5">
+        {items.map((item) => {
+          const category = item.category_id
+            ? categoryById.get(item.category_id)
+            : undefined;
+          return (
+            <div
+              key={item.id}
+              className="flex items-center gap-3 rounded-md border border-l-2 border-hairline border-l-[#7cc0f5] bg-[#0d141b] px-3 py-2"
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium break-words">
+                  {item.title ?? "(untitled event)"}
+                </span>
+                <span className="flex items-center gap-2">
+                  {category ? (
+                    <CategoryBadge
+                      id={category.id}
+                      name={category.name}
+                      color={category.color}
+                    />
+                  ) : (
+                    <span className="text-xs text-muted">No category</span>
+                  )}
+                  {item.start_at && item.end_at ? (
+                    <span className="font-mono text-xs text-muted tabular-nums">
+                      {eventTime(item.start_at)}–{eventTime(item.end_at)}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <span className="shrink-0 font-mono text-sm text-[#7cc0f5] tabular-nums">
+                {formatDuration(item.expected_minutes)}
+              </span>
+            </div>
           );
         })}
       </div>
@@ -341,6 +410,9 @@ export function TimerPanel({
 
   const calendarLocked = session?.planned_item_id != null;
 
+  // Split planned items into manual and calendar-synced.
+  const calendarItems = plannedToday.filter((i) => i.gcal_event_id !== null);
+
   return (
     <div className="flex flex-col gap-8">
       {nextCalendarStartAt ? (
@@ -370,6 +442,7 @@ export function TimerPanel({
           <QuickStart plannedToday={plannedToday} categories={categories} />
         </>
       )}
+      <CalendarToday items={calendarItems} categories={categories} />
     </div>
   );
 }

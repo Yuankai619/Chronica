@@ -19,12 +19,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarClock, GripVertical, Plus, X } from "lucide-react";
+import { CalendarClock, GripVertical, Pencil, Plus, X } from "lucide-react";
 import {
   addPlannedItem,
   deletePlannedItem,
   movePlannedItem,
   setPlannedItemCategory,
+  updatePlannedItem,
 } from "@/app/(app)/planning/actions";
 import type { Category } from "@/lib/categories";
 import { formatDuration } from "@/lib/entries";
@@ -70,6 +71,8 @@ function ItemCard({
   overlay?: boolean;
 }) {
   const [assigning, startAssign] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [editPending, startEditTransition] = useTransition();
   const isCalendar = item.gcal_event_id !== null;
   const {
     attributes,
@@ -78,7 +81,62 @@ function ItemCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, disabled: overlay });
+  } = useSortable({ id: item.id, disabled: overlay || editing });
+
+  if (editing && !isCalendar) {
+    return (
+      <form
+        onPointerDown={(e) => e.stopPropagation()}
+        action={(formData) => {
+          startEditTransition(async () => {
+            await updatePlannedItem(item.id, formData);
+            setEditing(false);
+          });
+        }}
+        className="flex flex-col gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2"
+      >
+        <select
+          name="category_id"
+          aria-label="Category"
+          defaultValue={item.category_id ?? ""}
+          className="h-7 cursor-pointer rounded-sm border border-hairline bg-transparent px-1 text-xs focus:outline-none"
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          name="duration"
+          type="text"
+          defaultValue={String(item.expected_minutes)}
+          aria-label="Duration"
+          className="h-7 rounded-sm border border-hairline bg-transparent px-1 font-mono text-xs focus:outline-none"
+          required
+        />
+        <div className="flex gap-1">
+          <Button
+            type="submit"
+            size="sm"
+            disabled={editPending}
+            className="h-6 flex-1 text-xs"
+          >
+            {editPending ? "…" : "Save"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs"
+            onClick={() => setEditing(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <div
@@ -155,17 +213,30 @@ function ItemCard({
           </span>
         </span>
       </div>
-      {onDelete ? (
-        <button
-          type="button"
-          aria-label="Remove planned item"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={onDelete}
-          className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
-        >
-          <X className="size-3.5" aria-hidden />
-        </button>
-      ) : null}
+      <span className="flex shrink-0 items-center gap-0.5">
+        {!isCalendar && !overlay ? (
+          <button
+            type="button"
+            aria-label="Edit planned item"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setEditing(true)}
+            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus:opacity-100"
+          >
+            <Pencil className="size-3.5" aria-hidden />
+          </button>
+        ) : null}
+        {onDelete ? (
+          <button
+            type="button"
+            aria-label="Remove planned item"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onDelete}
+            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        ) : null}
+      </span>
     </div>
   );
 }
