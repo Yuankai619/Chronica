@@ -88,9 +88,7 @@ function BarRow({
               <div
                 className={cn(
                   "h-full rounded-sm",
-                  bar.solid
-                    ? "bg-accent/80"
-                    : "border border-accent-dim bg-transparent",
+                  bar.solid ? "bg-accent/80" : "bar-planned",
                 )}
                 style={{
                   width: `${max === 0 ? 0 : Math.round((bar.minutes / max) * 100)}%`,
@@ -135,9 +133,7 @@ export function WeekCompareChart({ rows }: { rows: WeekCompareRow[] }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted">
-          Outlined = planned · solid = actual
-        </p>
+        <p className="text-xs text-muted">Hatched = planned · solid = actual</p>
         <ToggleGroup
           options={[
             { value: "both", label: "Both" },

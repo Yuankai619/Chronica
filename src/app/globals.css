@@ -38,3 +38,13 @@ body {
   letter-spacing: 0.14em;
   color: var(--color-muted);
 }
+
+/* Planned-value bars: clearly visible hatched fill (vs solid = actual) */
+.bar-planned {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 45%, transparent) 0 4px,
+    color-mix(in srgb, var(--color-accent) 12%, transparent) 4px 8px
+  );
+  border: 1px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+}

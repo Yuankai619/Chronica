@@ -18,7 +18,7 @@ export function DayGaps({ gaps }: { gaps: DayGap[] }) {
           <div key={gap.day} className="flex flex-col items-center gap-1">
             <div className="flex h-24 w-full items-end gap-0.5 rounded-sm border border-hairline bg-panel/40 px-0.5 pt-0.5">
               <div
-                className="w-1/2 rounded-sm border border-accent-dim bg-transparent"
+                className="bar-planned w-1/2 rounded-sm"
                 style={{
                   height: `${Math.round((gap.plannedMinutes / max) * 100)}%`,
                 }}
@@ -42,7 +42,7 @@ export function DayGaps({ gaps }: { gaps: DayGap[] }) {
         ))}
       </div>
       <p className="mt-2 text-xs text-muted">
-        Outlined bar = planned · solid bar = recorded
+        Hatched bar = planned · solid bar = recorded
       </p>
     </div>
   );

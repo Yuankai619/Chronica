@@ -29,8 +29,14 @@ function formatElapsed(totalSeconds: number): string {
   return `${hh}:${mm}:${ss}`;
 }
 
-function notify(title: string, body: string) {
-  new Notification(title, { body, tag: "chronica-timer" });
+/** Returns false when the notification could not be shown. */
+function notify(title: string, body: string): boolean {
+  try {
+    new Notification(title, { body, tag: "chronica-timer" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function StartForm({
@@ -104,54 +110,60 @@ function RunningTimer({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [now, setNow] = useState(() => Date.now());
-  const notifiedExpected = useRef(false);
-  const lastCheckIn = useRef(0);
+  const [permission, setPermission] = useState<
+    NotificationPermission | "unsupported"
+  >("unsupported");
+  // Highest reminder threshold already notified: -1 none, 0 = expected
+  // reached, then one per 15-minute check-in. Only advances when a
+  // notification was actually shown, so a late permission grant still
+  // produces the reminder.
+  const lastNotified = useRef(-1);
 
   const startedAtMs = new Date(session.started_at).getTime();
   const elapsedSeconds = Math.max(0, Math.floor((now - startedAtMs) / 1000));
   const elapsedMin = Math.floor(elapsedSeconds / 60);
 
-  const notificationsBlocked =
-    typeof Notification === "undefined" || Notification.permission === "denied";
   const expectedReached =
     session.expected_minutes !== null && elapsedMin >= session.expected_minutes;
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
+    const interval = setInterval(() => {
+      setNow(Date.now());
+      // Track permission here too, so a grant made through the site
+      // settings (without our button) is picked up while running.
+      setPermission(
+        typeof Notification === "undefined"
+          ? "unsupported"
+          : Notification.permission,
+      );
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Expected-duration reminder + 15-minute check-ins (spec).
+  // Expected-duration reminder + 15-minute check-ins (spec). The
+  // threshold ref only advances when a notification was actually shown.
   useEffect(() => {
     if (session.expected_minutes === null) return;
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+
     const overMin = elapsedMin - session.expected_minutes;
     if (overMin < 0) return;
 
-    const canNotify =
-      typeof Notification !== "undefined" &&
-      Notification.permission === "granted";
+    const threshold = Math.floor(overMin / CHECK_IN_INTERVAL_MINUTES);
+    if (threshold <= lastNotified.current) return;
 
-    if (!notifiedExpected.current) {
-      notifiedExpected.current = true;
-      lastCheckIn.current = 0;
-      if (canNotify) {
-        notify(
-          "Time is up",
-          `${categoryName}: the expected ${session.expected_minutes} minutes have passed. The timer keeps running.`,
-        );
-      }
-    } else {
-      const checkIn = Math.floor(overMin / CHECK_IN_INTERVAL_MINUTES);
-      if (checkIn > lastCheckIn.current) {
-        lastCheckIn.current = checkIn;
-        if (canNotify) {
-          notify(
+    const shown =
+      lastNotified.current < 0
+        ? notify(
+            "Time is up",
+            `${categoryName}: the expected ${session.expected_minutes} minutes have passed. The timer keeps running.`,
+          )
+        : notify(
             "Still working?",
             `${categoryName} has been running ${elapsedMin} minutes — done yet?`,
           );
-        }
-      }
-    }
+    if (shown) lastNotified.current = threshold;
   }, [elapsedMin, session.expected_minutes, categoryName]);
 
   // Reflect the timer in the tab title as a notification fallback.
@@ -223,11 +235,23 @@ function RunningTimer({
               : `Expected: ${session.expected_minutes} min`}
           </p>
         ) : null}
-        {notificationsBlocked ? (
+        {permission === "denied" || permission === "unsupported" ? (
           <p className="rounded-md border border-accent-dim px-3 py-2 text-sm text-accent">
             Browser notifications are off — reminders will only appear here and
             in the tab title.
           </p>
+        ) : permission === "default" ? (
+          <button
+            type="button"
+            className="cursor-pointer rounded-md border border-accent-dim px-3 py-2 text-left text-sm text-accent hover:border-accent"
+            onClick={async () => {
+              const result = await Notification.requestPermission();
+              setPermission(result);
+            }}
+          >
+            Enable browser notifications to get the time-up reminder and
+            15-minute check-ins.
+          </button>
         ) : null}
         <Button
           variant="outline"
