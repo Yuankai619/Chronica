@@ -48,6 +48,7 @@ export default async function SettingsPage({
       <div className="grid max-w-4xl gap-6 lg:grid-cols-2">
         <SettingsForm
           timerCapMinutes={settings?.timer_cap_minutes ?? DEFAULT_CAP_MINUTES}
+          timezone={settings?.timezone ?? "Asia/Taipei"}
         />
         <PrinciplesCard principles={principles ?? []} />
         <GoogleCalendarCard

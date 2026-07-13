@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
 import { isUrlTitle, dueDateKey } from "@/lib/tasks";
-import { dayKey } from "@/lib/unrecorded";
+import { shiftedDayKey } from "@/lib/timezone";
 import { getOpenTasks } from "@/server/microsoft";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
@@ -50,6 +50,14 @@ export default async function TasksPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Fetch user's timezone setting (default Asia/Taipei).
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("timezone")
+    .eq("user_id", user!.id)
+    .maybeSingle();
+  const tz = settings?.timezone ?? "Asia/Taipei";
+
   // Completed-today rows expire after the day passes: purge, then read.
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -58,12 +66,8 @@ export default async function TasksPage({
     .delete()
     .lt("completed_at", todayStart.toISOString());
 
-  // Include tasks due today ± 1 day: the Graph API may return dates in
-  // UTC while the server runs in UTC — a task due "today" in UTC+8 can
-  // appear as yesterday or tomorrow in UTC.
-  const windowEnd = new Date();
-  windowEnd.setDate(windowEnd.getDate() + 1);
-  const windowEndKey = dayKey(windowEnd);
+  // Use the user's timezone to determine "today" for task filtering.
+  const windowEndKey = shiftedDayKey(1, tz);
 
   const [{ data: entries }, { data: completed }, allTasks] = await Promise.all([
     supabase
