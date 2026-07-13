@@ -9,6 +9,7 @@ import { formatSignedDuration } from "@/lib/settlement";
 import { PlanBoard } from "@/components/plan-board";
 import { RetroCard } from "@/components/retro-card";
 import { CalendarSyncButton } from "@/components/calendar-sync-button";
+import { CopyWeekButton } from "@/components/copy-week-button";
 import { isGoogleLinked } from "@/server/google-calendar";
 import { CategoryBadge } from "@/components/ui/badge";
 
@@ -100,6 +101,7 @@ export default async function PlanningPage({
           <span className="font-mono tabular-nums">{weekKey}</span>
         </h1>
         <nav className="flex items-center gap-3 text-sm">
+          <CopyWeekButton weekKey={weekKey} />
           {gcalLinked ? <CalendarSyncButton weekKey={weekKey} /> : null}
           <Link
             className="text-muted hover:text-foreground"

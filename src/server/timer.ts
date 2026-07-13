@@ -24,12 +24,26 @@ export async function getCapMinutes(
  * Saves a finished session as a time entry and removes the session row.
  * Used by explicit stops, automatic stops when a new timer starts, and
  * cap reconciliation.
+ *
+ * Idempotent: uses a delete-first "claim" pattern so concurrent calls
+ * (e.g. CalendarAutoStart + user navigation racing) cannot create
+ * duplicate entries for the same session.
  */
 export async function saveAndClearSession(
   supabase: Client,
   session: TimerSession,
   now: Date,
 ): Promise<{ error?: string }> {
+  // Delete the session first as an atomic claim — only one concurrent
+  // caller will see a deleted row; the rest exit early.
+  const { data: deleted, error: deleteError } = await supabase
+    .from("timer_sessions")
+    .delete()
+    .eq("id", session.id)
+    .select("id");
+  if (deleteError) return { error: deleteError.message };
+  if (!deleted || deleted.length === 0) return {}; // already claimed
+
   const settled = settleSession(session, now);
   const isCalendar = session.planned_item_id !== null;
 
@@ -47,12 +61,6 @@ export async function saveAndClearSession(
     todo_list_id: session.todo_list_id,
   });
   if (insertError) return { error: insertError.message };
-
-  const { error: deleteError } = await supabase
-    .from("timer_sessions")
-    .delete()
-    .eq("id", session.id);
-  if (deleteError) return { error: deleteError.message };
 
   if (isCalendar) {
     await supabase
