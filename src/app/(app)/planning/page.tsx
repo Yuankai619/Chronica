@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
-import { getWeekEnd, getWeekKey, getWeekStart } from "@/lib/week";
+import { getWeekKey, getWeekStart } from "@/lib/week";
 import { computeWeekStatus, weekDayKeys } from "@/lib/plan-board";
 import { dayKey } from "@/lib/unrecorded";
 import { formatDuration } from "@/lib/entries";
@@ -33,7 +33,6 @@ export default async function PlanningPage({
 }) {
   const { week } = await searchParams;
   const weekStart = parseWeekParam(week);
-  const weekEnd = getWeekEnd(weekStart);
   const weekKey = getWeekKey(weekStart);
   const dayKeys = weekDayKeys(weekStart);
   const reviewWeekKey = shiftWeek(weekStart, -1);
@@ -41,10 +40,13 @@ export default async function PlanningPage({
 
   const supabase = await createClient();
 
+  const lastWeekKeys = weekDayKeys(reviewWeekStart);
+
   const [
     { data: categories },
     { data: items },
-    { data: entries },
+    { data: lastWeekItems },
+    { data: lastWeekEntries },
     { data: retro },
     { count: reviewEntryCount },
   ] = await Promise.all([
@@ -55,10 +57,15 @@ export default async function PlanningPage({
       .gte("day", dayKeys[0])
       .lte("day", dayKeys[6]),
     supabase
+      .from("planned_items")
+      .select("*")
+      .gte("day", lastWeekKeys[0])
+      .lte("day", lastWeekKeys[6]),
+    supabase
       .from("time_entries")
       .select("*")
-      .gte("started_at", weekStart.toISOString())
-      .lt("started_at", weekEnd.toISOString()),
+      .gte("started_at", reviewWeekStart.toISOString())
+      .lt("started_at", weekStart.toISOString()),
     supabase
       .from("retros")
       .select("content")
@@ -72,7 +79,11 @@ export default async function PlanningPage({
   ]);
 
   const sorted = sortCategories(categories ?? []);
-  const status = computeWeekStatus(sorted, items ?? [], entries ?? []);
+  const status = computeWeekStatus(
+    sorted,
+    lastWeekItems ?? [],
+    lastWeekEntries ?? [],
+  );
 
   return (
     <main>
@@ -101,32 +112,37 @@ export default async function PlanningPage({
       </div>
 
       {status.length > 0 ? (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {status.map((row) => (
-            <div
-              key={row.category.id}
-              className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
-            >
-              <Badge variant={row.category.category_group}>
-                {row.category.name}
-              </Badge>
-              <span className="font-mono text-xs text-muted tabular-nums">
-                {formatDuration(row.actualMinutes)} /{" "}
-                {formatDuration(row.plannedMinutes)}
-              </span>
-              <span
-                className={`font-mono text-xs tabular-nums ${
-                  row.diffMinutes > 0
-                    ? "text-danger"
-                    : row.diffMinutes < 0
-                      ? "text-accent"
-                      : "text-muted"
-                }`}
+        <div className="mb-6">
+          <p className="microlabel mb-2">
+            Last week ({reviewWeekKey}) · actual / planned
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {status.map((row) => (
+              <div
+                key={row.category.id}
+                className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
               >
-                {formatSignedDuration(row.diffMinutes)}
-              </span>
-            </div>
-          ))}
+                <Badge variant={row.category.category_group}>
+                  {row.category.name}
+                </Badge>
+                <span className="font-mono text-xs text-muted tabular-nums">
+                  {formatDuration(row.actualMinutes)} /{" "}
+                  {formatDuration(row.plannedMinutes)}
+                </span>
+                <span
+                  className={`font-mono text-xs tabular-nums ${
+                    row.diffMinutes > 0
+                      ? "text-danger"
+                      : row.diffMinutes < 0
+                        ? "text-accent"
+                        : "text-muted"
+                  }`}
+                >
+                  {formatSignedDuration(row.diffMinutes)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 
