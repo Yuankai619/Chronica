@@ -25,6 +25,24 @@ time-statistics method. The full behavioral spec lives in
 
 Before pushing: `pnpm lint && pnpm type-check && pnpm test && pnpm format:check`.
 
+## Secrets (git-crypt)
+
+`.env` is committed but **encrypted with [git-crypt](https://github.com/AGWA/git-crypt)**.
+This repo is public — never commit it in the clear.
+
+On a fresh clone:
+
+```bash
+pnpm install                  # also sets core.hooksPath=.githooks
+git-crypt unlock              # needs the project GPG key in your keyring
+git-crypt status -e           # should list .env
+```
+
+Until you unlock, `.env` on disk is ciphertext and the app will not boot.
+A `pre-commit` hook in [.githooks/](.githooks/) blocks any commit that stages
+`.env` as plaintext; if it fires, the filter is broken — fix it, don't
+`--no-verify`.
+
 ## Project Layout
 
 - `src/app/(app)/` — authenticated pages (timer, entries, week, planning,
