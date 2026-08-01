@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# Refuse to commit a git-crypt-protected file that is still plaintext.
+#
+# This repo is public, so a single commit that slips past the git-crypt filter
+# would publish real credentials. The filter can silently fail to apply when
+# .gitattributes is missing/edited, when a file is staged from a worktree that
+# never ran `git-crypt unlock`, or when git-crypt is not installed at all.
+#
+# Bypass with `git commit --no-verify` if you genuinely need to.
+
+set -euo pipefail
+
+# Hex of git-crypt's 10-byte header: "\0GITCRYPT\0".
+readonly GITCRYPT_MAGIC='004749544352595054'
+
+fail=0
+
+# Hex of the first 9 bytes of a staged blob, for magic-header comparison.
+staged_magic() {
+	git show ":$1" 2>/dev/null | head -c 9 | od -An -tx1 | tr -d ' \n'
+}
+
+# Value of the `filter` gitattribute for a path (empty when unset).
+filter_attr() {
+	git check-attr -z filter -- "$1" | tr '\0' '\n' | sed -n '3p'
+}
+
+# Files that must never be committed in the clear, even if .gitattributes was
+# deleted or mangled — that is exactly the case the attribute check misses.
+looks_like_secret() {
+	case "${1##*/}" in
+		.env.example | .env.sample | .env.template) return 1 ;;
+		.env | .env.*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+while IFS= read -r -d '' file; do
+	encrypt_expected=0
+	[ "$(filter_attr "$file")" = 'git-crypt' ] && encrypt_expected=1
+	looks_like_secret "$file" && encrypt_expected=1
+	[ "$encrypt_expected" -eq 1 ] || continue
+
+	if [ "$(staged_magic "$file")" != "$GITCRYPT_MAGIC" ]; then
+		if [ "$fail" -eq 0 ]; then
+			echo 'pre-commit: BLOCKED — secret file staged as plaintext.' >&2
+			echo >&2
+		fi
+		echo "  $file" >&2
+		fail=1
+	fi
+done < <(git diff --cached --name-only -z --diff-filter=ACMR)
+
+if [ "$fail" -ne 0 ]; then
+	cat >&2 <<'EOF'
+
+These files are expected to be encrypted by git-crypt, but the content staged
+in the index is not. Committing now would publish them in readable form.
+
+To fix:
+  1. Check that .gitattributes still routes them through git-crypt:
+       git check-attr filter -- .env      # want: "filter: git-crypt"
+  2. Make sure the repo is unlocked and git-crypt is on PATH:
+       git-crypt status -e
+  3. Re-stage so the clean filter runs, then verify:
+       git rm --cached .env && git add .env
+       git show :.env | head -c 9 | xxd    # want: 00 47 49 54 43 52 59 50 54
+
+If a plaintext secret already reached a commit, rotate the credential — history
+rewriting alone does not un-leak it.
+EOF
+	exit 1
+fi
