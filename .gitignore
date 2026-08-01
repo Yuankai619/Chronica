@@ -32,3 +32,8 @@ pnpm-debug.log*
 
 # supabase CLI
 supabase/.temp/
+
+# exported git-crypt / GPG keys — never commit these
+chronica-key.asc
+*.asc
+*.key
