@@ -18,7 +18,7 @@ npm-debug.log*
 pnpm-debug.log*
 
 # env files
-.env
+# .env is committed, encrypted with git-crypt (see .gitattributes)
 .env*.local
 
 # vercel

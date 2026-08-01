@@ -1,0 +1,7 @@
+# Secrets encrypted at rest with git-crypt (https://github.com/AGWA/git-crypt).
+# Run `git-crypt unlock` after cloning to decrypt these files.
+.env filter=git-crypt diff=git-crypt
+
+# Never encrypt git-crypt's own metadata.
+.gitattributes !filter !diff
+.git-crypt/** !filter !diff
