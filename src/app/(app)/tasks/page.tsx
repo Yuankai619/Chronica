@@ -78,6 +78,7 @@ export default async function TasksPage({
         "todo_task_id, todo_task_title, todo_list_id, duration_minutes, started_at",
       )
       .not("todo_task_id", "is", null)
+      .is("deleted_at", null)
       .order("started_at", { ascending: false })
       .limit(2000),
     supabase

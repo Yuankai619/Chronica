@@ -49,7 +49,8 @@ export default async function WeekPage({
         .from("time_entries")
         .select("*")
         .gte("started_at", weekStart.toISOString())
-        .lt("started_at", weekEnd.toISOString()),
+        .lt("started_at", weekEnd.toISOString())
+        .is("deleted_at", null),
       supabase
         .from("planned_items")
         .select("*")

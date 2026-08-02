@@ -74,7 +74,8 @@ export default async function PlanningPage({
       .from("time_entries")
       .select("*")
       .gte("started_at", reviewWeekStart.toISOString())
-      .lt("started_at", weekStartInstant.toISOString()),
+      .lt("started_at", weekStartInstant.toISOString())
+      .is("deleted_at", null),
     supabase
       .from("retros")
       .select("content")
@@ -84,7 +85,8 @@ export default async function PlanningPage({
       .from("time_entries")
       .select("id", { count: "exact", head: true })
       .gte("started_at", reviewWeekStart.toISOString())
-      .lt("started_at", weekStartInstant.toISOString()),
+      .lt("started_at", weekStartInstant.toISOString())
+      .is("deleted_at", null),
     isGoogleLinked(supabase, user!.id),
   ]);
 

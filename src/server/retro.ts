@@ -67,7 +67,8 @@ async function buildContext(
       .from("time_entries")
       .select("*")
       .gte("started_at", weekStart.toISOString())
-      .lt("started_at", weekEnd.toISOString()),
+      .lt("started_at", weekEnd.toISOString())
+      .is("deleted_at", null),
     supabase
       .from("planned_items")
       .select("*")
@@ -167,7 +168,8 @@ export async function runRetro(
     .from("time_entries")
     .select("id", { count: "exact", head: true })
     .gte("started_at", reviewStart.toISOString())
-    .lt("started_at", reviewEnd.toISOString());
+    .lt("started_at", reviewEnd.toISOString())
+    .is("deleted_at", null);
   if ((count ?? 0) === 0) {
     return { error: "Last week has no recorded entries to review." };
   }

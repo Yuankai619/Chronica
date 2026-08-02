@@ -1,11 +1,38 @@
 import { describe, expect, it } from "vitest";
 import {
+  DELETED_RETENTION_DAYS,
+  deletedRetentionCutoff,
   formatDuration,
   groupEntriesByDay,
   parseDurationInput,
   parseEntryInput,
   type TimeEntry,
 } from "./entries";
+
+describe("deletedRetentionCutoff", () => {
+  it("is the retention window before the given instant", () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    expect(deletedRetentionCutoff(now).toISOString()).toBe(
+      "2026-07-19T09:00:00.000Z",
+    );
+  });
+
+  it("keeps a row deleted exactly at the boundary", () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const deletedAt = new Date("2026-07-19T09:00:00.000Z");
+    expect(deletedAt < deletedRetentionCutoff(now)).toBe(false);
+  });
+
+  it("purges a row deleted one millisecond earlier", () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const deletedAt = new Date("2026-07-19T08:59:59.999Z");
+    expect(deletedAt < deletedRetentionCutoff(now)).toBe(true);
+  });
+
+  it("retains for 14 days", () => {
+    expect(DELETED_RETENTION_DAYS).toBe(14);
+  });
+});
 
 describe("parseDurationInput", () => {
   it("parses plain minutes", () => {
@@ -77,6 +104,7 @@ describe("groupEntriesByDay", () => {
       todo_task_id: null,
       todo_task_title: null,
       todo_list_id: null,
+      deleted_at: null,
       created_at: "",
       updated_at: "",
     };

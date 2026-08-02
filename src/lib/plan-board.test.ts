@@ -66,6 +66,7 @@ function entry(
     todo_task_id: null,
     todo_task_title: null,
     todo_list_id: null,
+    deleted_at: null,
     created_at: "",
     updated_at: "",
   };

@@ -76,6 +76,10 @@ Repo-installed skills (symlinked into `.claude/skills/`):
 - Only one timer may run at a time; starting a new one stops and saves the old one.
 - Timer truth lives in **server-side timestamps**, never client clocks.
 - Deleting a category with entries **archives** it; history must stay intact.
+- Deleting a time entry is a **soft delete** (`deleted_at`), kept for 14 days.
+  Every read of `time_entries` must carry `deleted_at is null`; the only
+  exception is the count in `deleteCategory()` that decides whether a category
+  can be hard-deleted.
 - Weekly plans are **snapshots** — editing past entries never rewrites a saved plan.
 - Category descriptions are admin/AI context only; never render them on the
   execution/timer UI.

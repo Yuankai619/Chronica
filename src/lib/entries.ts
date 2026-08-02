@@ -82,6 +82,14 @@ export function parseEntryInput(values: {
   };
 }
 
+/** Days a soft-deleted entry stays restorable before it is purged. */
+export const DELETED_RETENTION_DAYS = 14;
+
+/** Rows whose `deleted_at` is strictly before this may be purged. */
+export function deletedRetentionCutoff(now: Date = new Date()): Date {
+  return new Date(now.getTime() - DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+}
+
 /** Groups entries by local calendar day key (YYYY-MM-DD), newest day first. */
 export function groupEntriesByDay(
   entries: TimeEntry[],
