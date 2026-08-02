@@ -115,12 +115,14 @@ export default async function SummaryPage({
       .select("*")
       .gte("started_at", start.toISOString())
       .lt("started_at", end.toISOString())
+      .is("deleted_at", null)
       .limit(10000),
     supabase
       .from("time_entries")
       .select("*")
       .gte("started_at", weekStart.toISOString())
-      .lt("started_at", weekEnd.toISOString()),
+      .lt("started_at", weekEnd.toISOString())
+      .is("deleted_at", null),
     supabase
       .from("planned_items")
       .select("*")
@@ -130,6 +132,7 @@ export default async function SummaryPage({
       .from("time_entries")
       .select("category_id, duration_minutes, started_at")
       .gte("started_at", yearAgo.toISOString())
+      .is("deleted_at", null)
       .limit(10000),
   ]);
 

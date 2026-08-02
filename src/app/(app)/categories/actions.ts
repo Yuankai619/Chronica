@@ -94,6 +94,8 @@ export async function unarchiveCategory(id: string): Promise<ActionResult> {
 export async function deleteCategory(id: string): Promise<ActionResult> {
   const { supabase } = await getAuthed();
 
+  // Deliberately counts soft-deleted entries too: they still reference the
+  // category, so hard-deleting it would hit the NO ACTION foreign key.
   const { count, error: countError } = await supabase
     .from("time_entries")
     .select("id", { count: "exact", head: true })

@@ -283,6 +283,7 @@ export interface Database {
           todo_task_id: string | null;
           todo_task_title: string | null;
           todo_list_id: string | null;
+          deleted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -298,6 +299,7 @@ export interface Database {
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;
+          deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -313,6 +315,7 @@ export interface Database {
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;
+          deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

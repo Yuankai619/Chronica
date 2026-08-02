@@ -23,6 +23,7 @@ export default async function EntriesPage() {
         .from("time_entries")
         .select("*")
         .gte("started_at", since.toISOString())
+        .is("deleted_at", null)
         .order("started_at", { ascending: false })
         .limit(300),
       getOpenTasks(supabase, user!.id),

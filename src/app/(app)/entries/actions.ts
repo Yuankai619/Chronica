@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { parseEntryInput } from "@/lib/entries";
+import type { Database } from "@/lib/database.types";
+import { deletedRetentionCutoff, parseEntryInput } from "@/lib/entries";
 import { decodeTaskOption } from "@/lib/tasks";
 
 export interface ActionResult {
@@ -81,14 +83,32 @@ export async function updateEntry(
   return {};
 }
 
+/**
+ * Soft delete: the row keeps its id and columns so it can be restored.
+ * Purging expired rows rides along here rather than on the deleted-entries
+ * page, so the retention promise does not depend on the user visiting it.
+ */
 export async function deleteEntry(id: string): Promise<ActionResult> {
   const { supabase } = await getAuthed();
 
-  const { error } = await supabase.from("time_entries").delete().eq("id", id);
+  const { error } = await supabase
+    .from("time_entries")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) return { error: error.message };
+
+  await purgeExpiredEntries(supabase);
 
   revalidatePath("/entries");
   return {};
+}
+
+/** Best-effort cleanup; a failure here must not fail the delete. */
+async function purgeExpiredEntries(supabase: SupabaseClient<Database>) {
+  await supabase
+    .from("time_entries")
+    .delete()
+    .lt("deleted_at", deletedRetentionCutoff().toISOString());
 }
 
 /** Clears the needs-confirmation flag on a capped timer entry. */

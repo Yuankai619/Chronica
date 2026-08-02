@@ -30,7 +30,8 @@ export default async function Home() {
     supabase
       .from("time_entries")
       .select("*")
-      .gte("started_at", todayStart.toISOString()),
+      .gte("started_at", todayStart.toISOString())
+      .is("deleted_at", null),
     supabase
       .from("planned_items")
       .select("*")

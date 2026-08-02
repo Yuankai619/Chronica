@@ -49,7 +49,8 @@ export async function getWeekHistory(
     .select("*")
     .eq("user_id", userId)
     .gte("started_at", earliest.toISOString())
-    .lt("started_at", end.toISOString());
+    .lt("started_at", end.toISOString())
+    .is("deleted_at", null);
 
   const entriesByWeek = new Map<string, NonNullable<typeof entries>>();
   for (const entry of entries ?? []) {
