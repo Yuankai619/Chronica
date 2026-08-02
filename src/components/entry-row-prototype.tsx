@@ -17,13 +17,6 @@ import type { Category } from "@/lib/categories";
 import { dayKeyInTz } from "@/lib/tz";
 import { Badge } from "@/components/ui/badge";
 
-export const VARIANTS = ["A", "B", "C"] as const;
-export const VARIANT_LABELS: Record<string, string> = {
-  A: "Timeline rail",
-  B: "Content first",
-  C: "Duration led",
-};
-
 function endOf(entry: TimeEntry): Date {
   return new Date(
     Date.parse(entry.started_at) + entry.duration_minutes * 60_000,

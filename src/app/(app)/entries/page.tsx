@@ -4,7 +4,10 @@ import { EntriesManager } from "@/components/entries-manager";
 import { getOpenTasks } from "@/server/microsoft";
 import { getUserTimeZone } from "@/server/tz";
 import { PrototypeSwitcher } from "@/components/prototype-switcher";
-import { VARIANTS, VARIANT_LABELS } from "@/components/entry-row-prototype";
+import {
+  VARIANTS,
+  VARIANT_LABELS,
+} from "@/components/entry-row-prototype-variants";
 
 export const metadata = { title: "Entries — Chronica" };
 
