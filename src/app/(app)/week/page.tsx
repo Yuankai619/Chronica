@@ -126,6 +126,7 @@ export default async function WeekPage({
 
       <div className="mt-10">
         <DayGaps
+          categories={categories ?? []}
           gaps={weekDayGaps(
             weekKey,
             (entries ?? []).filter((e) => !excluded.has(e.category_id)),

@@ -82,3 +82,10 @@ export function categoryPaletteIndex(id: string): number {
   }
   return hash % CATEGORY_PALETTE_SIZE;
 }
+
+/** The accent color to paint a category with: user choice, else the palette. */
+export function categoryColor(
+  category: Pick<Category, "id" | "color">,
+): string {
+  return category.color ?? PRESET_COLORS[categoryPaletteIndex(category.id)];
+}
