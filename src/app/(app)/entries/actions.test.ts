@@ -49,7 +49,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { createEntry, deleteEntry } from "./actions";
+import { createEntry, deleteEntry, restoreEntry } from "./actions";
 
 function quickAdd(startedAt: string): FormData {
   const form = new FormData();
@@ -103,6 +103,27 @@ describe("deleteEntry", () => {
     await deleteEntry("entry-1");
 
     expect(calls.map((c) => c.op)).toEqual(["update", "delete"]);
+  });
+});
+
+describe("restoreEntry", () => {
+  beforeEach(() => {
+    calls.length = 0;
+  });
+
+  it("clears deleted_at on the targeted row", async () => {
+    await restoreEntry("entry-1");
+
+    const update = calls.find((c) => c.op === "update");
+    expect(update?.table).toBe("time_entries");
+    expect(update?.payload).toEqual({ deleted_at: null });
+    expect(update?.filters).toEqual([["eq", "id", "entry-1"]]);
+  });
+
+  it("never deletes anything", async () => {
+    await restoreEntry("entry-1");
+
+    expect(calls.some((c) => c.op === "delete")).toBe(false);
   });
 });
 

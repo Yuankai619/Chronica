@@ -91,6 +91,18 @@ export function deletedRetentionCutoff(now: Date = new Date()): Date {
   return new Date(now.getTime() - DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 }
 
+/** Whole days a soft-deleted row still has before it is purged; 0 once past. */
+export function deletedDaysLeft(
+  deletedAt: string,
+  now: Date = new Date(),
+): number {
+  const remainingMs =
+    Date.parse(deletedAt) +
+    DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000 -
+    now.getTime();
+  return Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+}
+
 /** Groups entries by the user's calendar day, newest day first. */
 export function groupEntriesByDay(
   entries: TimeEntry[],
