@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import type { PickerSections } from "@/lib/tasks";
+import { timeInTz } from "@/lib/tz";
 import { TaskPicker } from "@/components/task-picker";
 import type { PlannedItem } from "@/lib/plan-board";
 import { formatDuration } from "@/lib/entries";
@@ -106,10 +107,12 @@ function RunningTimer({
   session,
   categoryName,
   calendarEvent,
+  timeZone,
 }: {
   session: TimerSession;
   categoryName: string;
   calendarEvent?: CalendarEventInfo | null;
+  timeZone: string;
 }) {
   const isCalendar = calendarEvent != null;
   const router = useRouter();
@@ -206,15 +209,8 @@ function RunningTimer({
             </p>
             {calendarEvent.startAt && calendarEvent.endAt ? (
               <p className="font-mono text-xs text-muted tabular-nums">
-                {new Date(calendarEvent.startAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                –
-                {new Date(calendarEvent.endAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {timeInTz(new Date(calendarEvent.startAt), timeZone)}–
+                {timeInTz(new Date(calendarEvent.endAt), timeZone)}
               </p>
             ) : null}
           </>
@@ -338,20 +334,15 @@ function QuickStart({
 function CalendarToday({
   items,
   categories,
+  timeZone,
 }: {
   items: PlannedItem[];
   categories: Category[];
+  timeZone: string;
 }) {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   if (items.length === 0) return null;
-
-  function eventTime(iso: string): string {
-    return new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
 
   return (
     <section className="flex flex-col gap-2">
@@ -385,7 +376,8 @@ function CalendarToday({
                   )}
                   {item.start_at && item.end_at ? (
                     <span className="font-mono text-xs text-muted tabular-nums">
-                      {eventTime(item.start_at)}–{eventTime(item.end_at)}
+                      {timeInTz(new Date(item.start_at), timeZone)}–
+                      {timeInTz(new Date(item.end_at), timeZone)}
                     </span>
                   ) : null}
                 </span>
@@ -424,6 +416,7 @@ export function TimerPanel({
   taskSections,
   plannedToday,
   todayKey,
+  timeZone,
   calendarEvent = null,
   nextCalendarStartAt = null,
 }: {
@@ -433,6 +426,7 @@ export function TimerPanel({
   plannedToday: PlannedItem[];
   /** Today in the user's timezone, resolved on the server. */
   todayKey: string;
+  timeZone: string;
   calendarEvent?: CalendarEventInfo | null;
   nextCalendarStartAt?: string | null;
 }) {
@@ -455,6 +449,7 @@ export function TimerPanel({
           session={session}
           categoryName={categoryName}
           calendarEvent={calendarLocked ? calendarEvent : null}
+          timeZone={timeZone}
         />
       ) : null}
       {calendarLocked ? (
@@ -478,7 +473,11 @@ export function TimerPanel({
           <QuickStart plannedToday={plannedToday} categories={categories} />
         </>
       )}
-      <CalendarToday items={calendarItems} categories={categories} />
+      <CalendarToday
+        items={calendarItems}
+        categories={categories}
+        timeZone={timeZone}
+      />
     </div>
   );
 }

@@ -16,6 +16,20 @@ export function dayKeyInTz(date: Date, timeZone: string): string {
   }).format(date);
 }
 
+/**
+ * 24-hour HH:mm in the given timezone. Fixed locale on purpose: any
+ * `toLocaleTimeString` in a client component renders differently on the
+ * server and in the browser, which is a hydration mismatch.
+ */
+export function timeInTz(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 /** Pure calendar arithmetic on day keys. */
 export function addDaysKey(key: string, days: number): string {
   const t = Date.parse(`${key}T00:00:00Z`) + days * 86_400_000;

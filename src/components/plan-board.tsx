@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { CategoryBadge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { timeInTz } from "@/lib/tz";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -50,13 +51,6 @@ function buildColumns(dayKeys: string[], items: PlannedItem[]): Columns {
   return columns;
 }
 
-function eventTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function ItemCard({
   item,
   category,
@@ -65,6 +59,7 @@ function ItemCard({
   overlay = false,
   actionsOpen = false,
   onToggleActions,
+  timeZone,
 }: {
   item: PlannedItem;
   category: Category | undefined;
@@ -73,6 +68,7 @@ function ItemCard({
   overlay?: boolean;
   actionsOpen?: boolean;
   onToggleActions?: () => void;
+  timeZone: string;
 }) {
   const [assigning, startAssign] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -177,7 +173,8 @@ function ItemCard({
             </span>
             {item.start_at && item.end_at ? (
               <span className="font-mono text-xs text-muted tabular-nums">
-                {eventTime(item.start_at)}–{eventTime(item.end_at)}
+                {timeInTz(new Date(item.start_at), timeZone)}–
+                {timeInTz(new Date(item.end_at), timeZone)}
               </span>
             ) : null}
           </>
@@ -332,6 +329,7 @@ function DayColumn({
   onError,
   openItemId,
   onToggleActions,
+  timeZone,
 }: {
   day: string;
   label: string;
@@ -343,6 +341,7 @@ function DayColumn({
   onError: (message: string | null) => void;
   openItemId: string | null;
   onToggleActions: (id: string) => void;
+  timeZone: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: day });
   const totalMinutes = items.reduce((s, i) => s + i.expected_minutes, 0);
@@ -385,6 +384,7 @@ function DayColumn({
               onDelete={() => onDelete(item.id)}
               actionsOpen={openItemId === item.id}
               onToggleActions={() => onToggleActions(item.id)}
+              timeZone={timeZone}
             />
           ))}
         </div>
@@ -399,11 +399,13 @@ export function PlanBoard({
   todayKey,
   items,
   categories,
+  timeZone,
 }: {
   dayKeys: string[];
   todayKey: string;
   items: PlannedItem[];
   categories: Category[];
+  timeZone: string;
 }) {
   const [columns, setColumns] = useState<Columns>(() =>
     buildColumns(dayKeys, items),
@@ -543,6 +545,7 @@ export function PlanBoard({
               onToggleActions={(id) =>
                 setOpenItemId((current) => (current === id ? null : id))
               }
+              timeZone={timeZone}
             />
           ))}
         </div>
@@ -555,6 +558,7 @@ export function PlanBoard({
                   ? categoryById.get(activeItem.category_id)
                   : undefined
               }
+              timeZone={timeZone}
               overlay
             />
           ) : null}

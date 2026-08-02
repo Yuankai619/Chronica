@@ -88,6 +88,7 @@ export default async function Home() {
           taskSections={sortTasksForPicker(tasks.tasks, todayKey)}
           plannedToday={plannedToday ?? []}
           todayKey={todayKey}
+          timeZone={timeZone}
           calendarEvent={
             activeCalendarItem
               ? {

@@ -161,6 +161,7 @@ export default async function PlanningPage({
           todayKey={todayKey}
           items={items ?? []}
           categories={sorted}
+          timeZone={timeZone}
         />
       </div>
 
