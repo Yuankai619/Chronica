@@ -1,13 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { deletedRetentionCutoff } from "@/lib/entries";
 
-const calls: Array<{ table: string; op: string; payload?: unknown }> = [];
+const calls: Array<{
+  table: string;
+  op: string;
+  payload?: unknown;
+  filters: Array<[string, string, unknown]>;
+}> = [];
 
 function builder(table: string, op: string, payload?: unknown) {
-  calls.push({ table, op, payload });
+  const filters: Array<[string, string, unknown]> = [];
+  calls.push({ table, op, payload, filters });
   const chain: Record<string, unknown> = {};
-  const passthrough = () => chain;
-  chain.eq = passthrough;
-  chain.lt = passthrough;
+  const record = (name: string) => (col: string, value: unknown) => {
+    filters.push([name, col, value]);
+    return chain;
+  };
+  chain.eq = record("eq");
+  chain.lt = record("lt");
   chain.then = (resolve: (value: { error: null }) => unknown) =>
     resolve({ error: null });
   return chain;
@@ -44,11 +54,28 @@ describe("deleteEntry", () => {
     ).toBe("string");
   });
 
-  it("purges rows past the retention window in the same call", async () => {
+  it("stamps only the targeted row", async () => {
     await deleteEntry("entry-1");
+
+    const update = calls.find((c) => c.op === "update");
+    expect(update?.filters).toEqual([["eq", "id", "entry-1"]]);
+  });
+
+  it("purges only rows deleted before the retention cutoff", async () => {
+    const before = deletedRetentionCutoff();
+    await deleteEntry("entry-1");
+    const after = deletedRetentionCutoff();
 
     const purge = calls.find((c) => c.op === "delete");
     expect(purge?.table).toBe("time_entries");
+    expect(purge?.filters).toHaveLength(1);
+    const [operator, column, value] = purge!.filters[0];
+    expect(operator).toBe("lt");
+    expect(column).toBe("deleted_at");
+    expect(Date.parse(value as string)).toBeGreaterThanOrEqual(
+      before.getTime(),
+    );
+    expect(Date.parse(value as string)).toBeLessThanOrEqual(after.getTime());
   });
 
   it("stamps before it purges", async () => {
