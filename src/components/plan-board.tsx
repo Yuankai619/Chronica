@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarClock, GripVertical, Pencil, Plus, X } from "lucide-react";
+import { CalendarClock, GripVertical, Plus } from "lucide-react";
 import {
   addPlannedItem,
   deletePlannedItem,
@@ -63,12 +63,16 @@ function ItemCard({
   categories = [],
   onDelete,
   overlay = false,
+  actionsOpen = false,
+  onToggleActions,
 }: {
   item: PlannedItem;
   category: Category | undefined;
   categories?: Category[];
   onDelete?: () => void;
   overlay?: boolean;
+  actionsOpen?: boolean;
+  onToggleActions?: () => void;
 }) {
   const [assigning, startAssign] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -147,7 +151,7 @@ function ItemCard({
           : { transform: CSS.Transform.toString(transform), transition }
       }
       className={cn(
-        "group flex touch-none items-start gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2 select-none",
+        "group flex touch-pan-y items-start gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2 select-none",
         isCalendar && "border-l-2 border-l-[#7cc0f5]",
         isDragging && "opacity-40",
         overlay && "shadow-xl shadow-black/50",
@@ -159,7 +163,10 @@ function ItemCard({
         className="mt-0.5 size-3.5 shrink-0 text-muted/60"
         aria-hidden
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div
+        className="flex min-w-0 flex-1 flex-col gap-1"
+        onClick={overlay ? undefined : onToggleActions}
+      >
         {isCalendar ? (
           <>
             <span className="flex items-center gap-1 text-[0.65rem] tracking-[0.08em] text-[#7cc0f5] uppercase">
@@ -212,31 +219,38 @@ function ItemCard({
             {formatDuration(item.expected_minutes)}
           </span>
         </span>
+        {actionsOpen && !overlay ? (
+          <div className="mt-1 flex gap-1">
+            {!isCalendar ? (
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setEditing(true);
+                  onToggleActions?.();
+                }}
+                className="flex-1 cursor-pointer rounded-sm border border-hairline py-1.5 text-xs text-muted hover:text-foreground"
+              >
+                Edit
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete();
+                }}
+                className="flex-1 cursor-pointer rounded-sm border border-hairline py-1.5 text-xs text-danger"
+              >
+                Delete
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <span className="flex shrink-0 items-center gap-0.5">
-        {!isCalendar && !overlay ? (
-          <button
-            type="button"
-            aria-label="Edit planned item"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setEditing(true)}
-            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus:opacity-100"
-          >
-            <Pencil className="size-3.5" aria-hidden />
-          </button>
-        ) : null}
-        {onDelete ? (
-          <button
-            type="button"
-            aria-label="Remove planned item"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={onDelete}
-            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
-          >
-            <X className="size-3.5" aria-hidden />
-          </button>
-        ) : null}
-      </span>
     </div>
   );
 }
@@ -316,6 +330,8 @@ function DayColumn({
   categoryById,
   onDelete,
   onError,
+  openItemId,
+  onToggleActions,
 }: {
   day: string;
   label: string;
@@ -325,6 +341,8 @@ function DayColumn({
   categoryById: Map<string, Category>;
   onDelete: (id: string) => void;
   onError: (message: string | null) => void;
+  openItemId: string | null;
+  onToggleActions: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: day });
   const totalMinutes = items.reduce((s, i) => s + i.expected_minutes, 0);
@@ -365,6 +383,8 @@ function DayColumn({
               }
               categories={categories}
               onDelete={() => onDelete(item.id)}
+              actionsOpen={openItemId === item.id}
+              onToggleActions={() => onToggleActions(item.id)}
             />
           ))}
         </div>
@@ -390,6 +410,8 @@ export function PlanBoard({
   );
   const [prevItems, setPrevItems] = useState(items);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Only one card shows its actions; a column of open rows would be unusable.
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -497,9 +519,10 @@ export function PlanBoard({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
-        onDragStart={(event: DragStartEvent) =>
-          setActiveId(String(event.active.id))
-        }
+        onDragStart={(event: DragStartEvent) => {
+          setOpenItemId(null);
+          setActiveId(String(event.active.id));
+        }}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
@@ -516,6 +539,10 @@ export function PlanBoard({
               categoryById={categoryById}
               onDelete={handleDelete}
               onError={setError}
+              openItemId={openItemId}
+              onToggleActions={(id) =>
+                setOpenItemId((current) => (current === id ? null : id))
+              }
             />
           ))}
         </div>
