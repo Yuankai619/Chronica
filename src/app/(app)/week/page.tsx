@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import { computeWeekSettlement } from "@/lib/settlement";
+import { excludedCategoryIds } from "@/lib/categories";
 import { formatDuration } from "@/lib/entries";
 import { plannedByCategory, plannedByDay } from "@/lib/plan-board";
 import {
@@ -58,6 +59,8 @@ export default async function WeekPage({
     plannedByCategory(items ?? []),
   );
 
+  const excluded = excludedCategoryIds(categories ?? []);
+
   return (
     <main>
       <div className="mb-6 flex items-center justify-between">
@@ -92,14 +95,24 @@ export default async function WeekPage({
           <p className="font-mono text-2xl font-semibold tabular-nums">
             {formatDuration(settlement.totalActualMinutes)}
           </p>
+          {settlement.excludedMinutes > 0 ? (
+            <p className="mt-1 text-xs text-muted">
+              + {formatDuration(settlement.excludedMinutes)} not counted
+            </p>
+          ) : null}
         </Card>
         <Card>
           <p className="microlabel mb-1">Planned</p>
           <p className="font-mono text-2xl font-semibold tabular-nums">
             {settlement.totalPlannedMinutes === null
-              ? "—"
+              ? "\u2014"
               : formatDuration(settlement.totalPlannedMinutes)}
           </p>
+          {settlement.excludedPlannedMinutes > 0 ? (
+            <p className="mt-1 text-xs text-muted">
+              + {formatDuration(settlement.excludedPlannedMinutes)} not counted
+            </p>
+          ) : null}
         </Card>
       </div>
 
@@ -115,8 +128,12 @@ export default async function WeekPage({
         <DayGaps
           gaps={weekDayGaps(
             weekKey,
-            entries ?? [],
-            plannedByDay(items ?? []),
+            (entries ?? []).filter((e) => !excluded.has(e.category_id)),
+            plannedByDay(
+              (items ?? []).filter(
+                (i) => i.category_id === null || !excluded.has(i.category_id),
+              ),
+            ),
             timeZone,
           )}
         />

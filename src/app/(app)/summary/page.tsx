@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { excludedCategoryIds } from "@/lib/categories";
+import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/entries";
 import { monthlyRecordedTrend, summarizePeriod } from "@/lib/summary";
 import { CategoryBadge } from "@/components/ui/badge";
@@ -176,8 +178,14 @@ export default async function SummaryPage({
   }
 
   const summary = summarizePeriod(categories ?? [], entries ?? []);
+  const excluded = excludedCategoryIds(categories ?? []);
   const trend =
-    mode === "year" ? monthlyRecordedTrend(entries ?? [], timeZone) : null;
+    mode === "year"
+      ? monthlyRecordedTrend(
+          (entries ?? []).filter((e) => !excluded.has(e.category_id)),
+          timeZone,
+        )
+      : null;
   const trendMax = trend ? Math.max(...trend, 1) : 1;
 
   return (
@@ -220,6 +228,11 @@ export default async function SummaryPage({
           <p className="font-mono text-xl font-semibold tabular-nums">
             {formatDuration(summary.totalMinutes)}
           </p>
+          {summary.excludedMinutes > 0 ? (
+            <p className="mt-1 text-xs text-muted">
+              + {formatDuration(summary.excludedMinutes)} not counted
+            </p>
+          ) : null}
         </Card>
         <Card>
           <p className="microlabel mb-1">Entries</p>
@@ -302,7 +315,23 @@ export default async function SummaryPage({
           </thead>
           <tbody>
             {summary.categories.map((row) => (
-              <tr key={row.category.id} className="border-b border-hairline">
+              <tr
+                key={row.category.id}
+                className={cn(
+                  "border-b border-hairline",
+                  row.category.excluded_from_totals && "opacity-70",
+                )}
+                title={
+                  row.category.excluded_from_totals
+                    ? "Not counted toward the total"
+                    : undefined
+                }
+                aria-label={
+                  row.category.excluded_from_totals
+                    ? `${row.category.name}, not counted toward the total`
+                    : undefined
+                }
+              >
                 <td className="py-2.5">
                   <CategoryBadge
                     id={row.category.id}
@@ -313,7 +342,13 @@ export default async function SummaryPage({
                 <td className="py-2.5 text-right font-mono tabular-nums">
                   {formatDuration(row.totalMinutes)}
                 </td>
-                <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+                <td
+                  className={cn(
+                    "py-2.5 text-right font-mono tabular-nums",
+                    // The row is already dimmed; muting on top would stack.
+                    row.category.excluded_from_totals ? "" : "text-muted",
+                  )}
+                >
                   {row.entryCount}
                 </td>
               </tr>

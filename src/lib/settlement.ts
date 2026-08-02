@@ -13,7 +13,12 @@ export interface SettlementRow {
 export interface WeekSettlement {
   rows: SettlementRow[];
   totalActualMinutes: number;
+  /** Planned minutes for the week; null when nothing was planned. */
   totalPlannedMinutes: number | null;
+  /** Actual minutes from excluded categories, left out of the totals. */
+  excludedMinutes: number;
+  /** Planned minutes from excluded categories; 0 when there is no plan. */
+  excludedPlannedMinutes: number;
   hasPlan: boolean;
 }
 
@@ -59,12 +64,28 @@ export function computeWeekSettlement(
     });
   }
 
+  // Excluded categories keep their row, planned/actual and diff; only the
+  // totals leave them out.
+  let totalActualMinutes = 0;
+  let totalPlannedMinutes = 0;
+  let excludedMinutes = 0;
+  let excludedPlannedMinutes = 0;
+  for (const row of rows) {
+    if (row.category.excluded_from_totals) {
+      excludedMinutes += row.actualMinutes;
+      excludedPlannedMinutes += row.plannedMinutes ?? 0;
+    } else {
+      totalActualMinutes += row.actualMinutes;
+      totalPlannedMinutes += row.plannedMinutes ?? 0;
+    }
+  }
+
   return {
     rows,
-    totalActualMinutes: rows.reduce((s, r) => s + r.actualMinutes, 0),
-    totalPlannedMinutes: hasPlan
-      ? rows.reduce((s, r) => s + (r.plannedMinutes ?? 0), 0)
-      : null,
+    totalActualMinutes,
+    totalPlannedMinutes: hasPlan ? totalPlannedMinutes : null,
+    excludedMinutes,
+    excludedPlannedMinutes: hasPlan ? excludedPlannedMinutes : 0,
     hasPlan,
   };
 }
