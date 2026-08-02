@@ -124,6 +124,22 @@ async function purgeExpiredEntries(supabase: SupabaseClient<Database>) {
     .lt("deleted_at", deletedRetentionCutoff().toISOString());
 }
 
+export async function restoreEntry(id: string): Promise<ActionResult> {
+  const { supabase } = await getAuthed();
+
+  const { error } = await supabase
+    .from("time_entries")
+    .update({ deleted_at: null })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  // Without the second path, switching back to /entries shows a cached
+  // list that the restored entry is missing from.
+  revalidatePath("/entries/deleted");
+  revalidatePath("/entries");
+  return {};
+}
+
 /** Clears the needs-confirmation flag on a capped timer entry. */
 export async function confirmEntry(id: string): Promise<ActionResult> {
   const { supabase } = await getAuthed();

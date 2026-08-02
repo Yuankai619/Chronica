@@ -123,6 +123,9 @@ export default async function EntriesPage({
               Next →
             </Link>
           )}
+          <Link className={navLink} href="/entries/deleted">
+            Deleted
+          </Link>
         </nav>
       </div>
 

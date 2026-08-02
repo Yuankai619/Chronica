@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DELETED_RETENTION_DAYS,
+  deletedDaysLeft,
   deletedRetentionCutoff,
   formatDuration,
   groupEntriesByDay,
@@ -8,6 +9,26 @@ import {
   parseEntryInput,
   type TimeEntry,
 } from "./entries";
+
+describe("deletedDaysLeft", () => {
+  const now = new Date("2026-08-02T09:00:00.000Z");
+
+  it("gives the full window to a row deleted just now", () => {
+    expect(deletedDaysLeft("2026-08-02T09:00:00.000Z", now)).toBe(14);
+  });
+
+  it("counts down as the window elapses", () => {
+    expect(deletedDaysLeft("2026-07-20T09:00:00.000Z", now)).toBe(1);
+  });
+
+  it("reports the last day rather than zero", () => {
+    expect(deletedDaysLeft("2026-07-19T09:00:01.000Z", now)).toBe(1);
+  });
+
+  it("never goes below zero once past the window", () => {
+    expect(deletedDaysLeft("2026-07-01T09:00:00.000Z", now)).toBe(0);
+  });
+});
 
 describe("deletedRetentionCutoff", () => {
   it("is the retention window before the given instant", () => {
