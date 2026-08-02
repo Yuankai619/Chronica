@@ -9,7 +9,7 @@ import type { Category } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
-import type { TodoTask } from "@/lib/tasks";
+import type { PickerSections } from "@/lib/tasks";
 import { TaskPicker } from "@/components/task-picker";
 import type { PlannedItem } from "@/lib/plan-board";
 import { formatDuration } from "@/lib/entries";
@@ -41,10 +41,12 @@ function notify(title: string, body: string): boolean {
 
 function StartForm({
   categories,
-  tasks,
+  taskSections,
+  todayKey,
 }: {
   categories: Category[];
-  tasks: TodoTask[] | null;
+  taskSections: PickerSections | null;
+  todayKey: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -88,7 +90,10 @@ function StartForm({
         placeholder="Expected minutes (optional)"
         aria-label="Expected minutes"
       />
-      {tasks && tasks.length > 0 ? <TaskPicker tasks={tasks} /> : null}
+      {taskSections &&
+      (taskSections.due.length > 0 || taskSections.groups.length > 0) ? (
+        <TaskPicker sections={taskSections} todayKey={todayKey} />
+      ) : null}
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Starting…" : "Start"}
       </Button>
@@ -416,15 +421,18 @@ function CalendarAutoStart({ nextStartAt }: { nextStartAt: string }) {
 export function TimerPanel({
   categories,
   session,
-  tasks,
+  taskSections,
   plannedToday,
+  todayKey,
   calendarEvent = null,
   nextCalendarStartAt = null,
 }: {
   categories: Category[];
   session: TimerSession | null;
-  tasks: TodoTask[] | null;
+  taskSections: PickerSections | null;
   plannedToday: PlannedItem[];
+  /** Today in the user's timezone, resolved on the server. */
+  todayKey: string;
   calendarEvent?: CalendarEventInfo | null;
   nextCalendarStartAt?: string | null;
 }) {
@@ -461,7 +469,11 @@ export function TimerPanel({
             <CardTitle>
               {session ? "Switch category (saves the current timer)" : "Start"}
             </CardTitle>
-            <StartForm categories={categories} tasks={tasks} />
+            <StartForm
+              categories={categories}
+              taskSections={taskSections}
+              todayKey={todayKey}
+            />
           </section>
           <QuickStart plannedToday={plannedToday} categories={categories} />
         </>

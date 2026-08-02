@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { TodoTask } from "@/lib/tasks";
+import { pickerTasks, type PickerSections } from "@/lib/tasks";
 
-type TaskPickerTasks = TodoTask[] | null | undefined;
+type TaskPickerSections = PickerSections | null | undefined;
 import { TaskPicker } from "@/components/task-picker";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
@@ -32,12 +32,14 @@ function toLocalInputValue(date: Date): string {
 function EntryForm({
   categories,
   entry,
-  tasks,
+  taskSections,
+  todayKey,
   onDone,
 }: {
   categories: Category[];
   entry?: TimeEntry;
-  tasks?: TodoTask[] | null;
+  taskSections?: PickerSections | null;
+  todayKey: string;
   onDone?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -113,13 +115,17 @@ function EntryForm({
           rows={1}
         />
       </div>
-      {tasks && tasks.length > 0 ? (
+      {taskSections &&
+      (taskSections.due.length > 0 || taskSections.groups.length > 0) ? (
         <div className="sm:max-w-96">
           <TaskPicker
-            tasks={tasks}
+            sections={taskSections}
+            todayKey={todayKey}
             initial={
               entry?.todo_task_id
-                ? (tasks.find((t) => t.id === entry.todo_task_id) ?? {
+                ? (pickerTasks(taskSections).find(
+                    (t) => t.id === entry.todo_task_id,
+                  ) ?? {
                     id: entry.todo_task_id,
                     title: entry.todo_task_title ?? "Linked task",
                     listId: entry.todo_list_id ?? "",
@@ -150,11 +156,13 @@ function EntryForm({
 function EntryRow({
   entry,
   categories,
-  tasks,
+  taskSections,
+  todayKey,
 }: {
   entry: TimeEntry;
   categories: Category[];
-  tasks: TaskPickerTasks;
+  taskSections: TaskPickerSections;
+  todayKey: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -168,7 +176,8 @@ function EntryRow({
         <EntryForm
           categories={categories}
           entry={entry}
-          tasks={tasks}
+          taskSections={taskSections}
+          todayKey={todayKey}
           onDone={() => setEditing(false)}
         />
       </li>
@@ -250,17 +259,20 @@ function EntryRow({
 /** Quick add lives outside the week list so paging never remounts it. */
 export function QuickAddCard({
   categories,
-  tasks,
+  taskSections,
+  todayKey,
 }: {
   categories: Category[];
-  tasks: TodoTask[] | null;
+  taskSections: PickerSections | null;
+  todayKey: string;
 }) {
   return (
     <Card>
       <CardTitle>Quick add</CardTitle>
       <EntryForm
         categories={categories.filter((c) => c.archived_at === null)}
-        tasks={tasks}
+        taskSections={taskSections}
+        todayKey={todayKey}
       />
     </Card>
   );
@@ -269,13 +281,15 @@ export function QuickAddCard({
 export function EntryList({
   categories,
   entries,
-  tasks,
+  taskSections,
   timeZone,
+  todayKey,
 }: {
   categories: Category[];
   entries: TimeEntry[];
-  tasks: TodoTask[] | null;
+  taskSections: PickerSections | null;
   timeZone: string;
+  todayKey: string;
 }) {
   const days = groupEntriesByDay(entries, timeZone);
   const excluded = excludedCategoryIds(categories);
@@ -304,7 +318,8 @@ export function EntryList({
                 key={entry.id}
                 entry={entry}
                 categories={categories}
-                tasks={tasks}
+                taskSections={taskSections}
+                todayKey={todayKey}
               />
             ))}
           </ul>

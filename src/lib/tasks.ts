@@ -79,3 +79,51 @@ export function groupTasksByList(
     tasks: listTasks,
   }));
 }
+
+export interface PickerSections {
+  /** Overdue and due-today tasks, flattened across lists. */
+  due: TodoTask[];
+  groups: { list: string; tasks: TodoTask[] }[];
+}
+
+function byDueThenTitle(a: TodoTask, b: TodoTask): number {
+  const aKey = dueDateKey(a.dueDate);
+  const bKey = dueDateKey(b.dueDate);
+  // No due date means no urgency signal, so those sink to the bottom.
+  if (aKey === null || bKey === null) {
+    if (aKey !== bKey) return aKey === null ? 1 : -1;
+  } else if (aKey !== bKey) {
+    return aKey < bKey ? -1 : 1;
+  }
+  return a.title.localeCompare(b.title);
+}
+
+/**
+ * Splits the picker into a pinned "due now" section and the usual list
+ * groups. Pinned tasks are removed from their group so no task appears twice.
+ */
+export function sortTasksForPicker(
+  tasks: TodoTask[],
+  todayKey: string,
+): PickerSections {
+  const due: TodoTask[] = [];
+  const rest: TodoTask[] = [];
+  for (const task of tasks) {
+    const key = dueDateKey(task.dueDate);
+    if (key !== null && key <= todayKey) due.push(task);
+    else rest.push(task);
+  }
+
+  return {
+    due: due.toSorted(byDueThenTitle),
+    groups: groupTasksByList(rest).map((group) => ({
+      list: group.list,
+      tasks: group.tasks.toSorted(byDueThenTitle),
+    })),
+  };
+}
+
+/** Every task in the sections, for lookups that need a flat list. */
+export function pickerTasks(sections: PickerSections): TodoTask[] {
+  return [...sections.due, ...sections.groups.flatMap((g) => g.tasks)];
+}
