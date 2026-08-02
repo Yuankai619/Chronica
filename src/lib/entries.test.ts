@@ -3,12 +3,76 @@ import {
   DELETED_RETENTION_DAYS,
   deletedDaysLeft,
   deletedRetentionCutoff,
+  entryDayOffset,
+  entryEndAt,
   formatDuration,
   groupEntriesByDay,
   parseDurationInput,
   parseEntryInput,
   type TimeEntry,
 } from "./entries";
+
+describe("entryEndAt", () => {
+  function at(startedAt: string, minutes: number): TimeEntry {
+    return {
+      id: "e",
+      user_id: "u",
+      category_id: "c",
+      started_at: startedAt,
+      duration_minutes: minutes,
+      note: null,
+      source: "manual",
+      needs_confirmation: false,
+      todo_task_id: null,
+      todo_task_title: null,
+      todo_list_id: null,
+      deleted_at: null,
+      created_at: "",
+      updated_at: "",
+    };
+  }
+
+  it("adds the duration to the start", () => {
+    expect(entryEndAt(at("2026-08-02T09:00:00Z", 90)).toISOString()).toBe(
+      "2026-08-02T10:30:00.000Z",
+    );
+  });
+
+  it("handles a zero-length entry", () => {
+    expect(entryEndAt(at("2026-08-02T09:00:00Z", 0)).toISOString()).toBe(
+      "2026-08-02T09:00:00.000Z",
+    );
+  });
+
+  describe("entryDayOffset", () => {
+    it("is zero within one day", () => {
+      expect(entryDayOffset(at("2026-08-02T09:00:00Z", 60), "UTC")).toBe(0);
+    });
+
+    it("is one when the end crosses midnight", () => {
+      expect(entryDayOffset(at("2026-08-02T23:30:00Z", 105), "UTC")).toBe(1);
+    });
+
+    it("counts more than one day for long entries", () => {
+      expect(entryDayOffset(at("2026-08-02T09:00:00Z", 3000), "UTC")).toBe(2);
+    });
+
+    it("depends on the user's timezone, not the server's", () => {
+      // 23:00 UTC is already the next day in Taipei, so a 2h entry
+      // crosses midnight in UTC but not in Taipei.
+      const entry = at("2026-08-02T23:00:00Z", 120);
+      expect(entryDayOffset(entry, "UTC")).toBe(1);
+      expect(entryDayOffset(entry, "Asia/Taipei")).toBe(0);
+    });
+
+    it("counts the local day across a daylight-saving transition", () => {
+      // 23:00 on 03-07 EST → 03:00 on 03-08 EDT: four real hours, but the
+      // local day advances. Dividing elapsed milliseconds would say zero.
+      const entry = at("2026-03-08T04:00:00Z", 240);
+      expect(entryDayOffset(entry, "America/New_York")).toBe(1);
+    });
+  });
+});
 
 describe("deletedDaysLeft", () => {
   const now = new Date("2026-08-02T09:00:00.000Z");

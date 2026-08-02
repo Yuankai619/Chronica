@@ -8,6 +8,8 @@ import {
   updateEntry,
 } from "@/app/(app)/entries/actions";
 import {
+  entryDayOffset,
+  entryEndAt,
   formatDuration,
   groupEntriesByDay,
   type TimeEntry,
@@ -27,6 +29,16 @@ import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** 24-hour HH:mm in the user's timezone; the browser locale must not decide. */
+function hhmm(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 function EntryForm({
@@ -157,11 +169,13 @@ function EntryRow({
   entry,
   categories,
   taskSections,
+  timeZone,
   todayKey,
 }: {
   entry: TimeEntry;
   categories: Category[];
   taskSections: TaskPickerSections;
+  timeZone: string;
   todayKey: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -169,6 +183,7 @@ function EntryRow({
   const confirm = useConfirm();
   const category = categories.find((c) => c.id === entry.category_id);
   const startedAt = new Date(entry.started_at);
+  const dayOffset = entryDayOffset(entry, timeZone);
 
   if (editing) {
     return (
@@ -185,20 +200,11 @@ function EntryRow({
   }
 
   return (
-    <li className="flex flex-col justify-between gap-2 border-b border-hairline py-3 sm:flex-row sm:items-center sm:gap-4">
+    <li className="flex flex-col justify-between gap-1 border-b border-hairline py-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-sm text-muted tabular-nums">
-            {startedAt.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
           <span className="font-medium">
             {category?.name ?? "Unknown category"}
-          </span>
-          <span className="font-mono text-sm text-accent tabular-nums">
-            {formatDuration(entry.duration_minutes)}
           </span>
           {entry.source === "timer" ? <Badge>timer</Badge> : null}
           {entry.needs_confirmation ? (
@@ -211,6 +217,16 @@ function EntryRow({
         {entry.note ? (
           <span className="text-sm text-muted">{entry.note}</span>
         ) : null}
+        <span className="font-mono text-xs text-muted tabular-nums">
+          {hhmm(startedAt, timeZone)} → {hhmm(entryEndAt(entry), timeZone)}
+          {dayOffset > 0
+            ? ` (+${dayOffset} ${dayOffset === 1 ? "day" : "days"})`
+            : ""}
+          <span className="mx-1.5">·</span>
+          <span className="text-accent">
+            {formatDuration(entry.duration_minutes)}
+          </span>
+        </span>
       </div>
       <div className="flex shrink-0 gap-1">
         {entry.needs_confirmation ? (
@@ -319,6 +335,7 @@ export function EntryList({
                 entry={entry}
                 categories={categories}
                 taskSections={taskSections}
+                timeZone={timeZone}
                 todayKey={todayKey}
               />
             ))}

@@ -83,6 +83,28 @@ export function parseEntryInput(values: {
   };
 }
 
+/** started_at + duration_minutes; the end is never stored. */
+export function entryEndAt(entry: TimeEntry): Date {
+  return new Date(
+    Date.parse(entry.started_at) + entry.duration_minutes * 60_000,
+  );
+}
+
+/**
+ * Whole days the end lands past the start day, in the user's zone.
+ * Compares day keys rather than milliseconds so DST shifts cannot
+ * fabricate or swallow a day.
+ */
+export function entryDayOffset(entry: TimeEntry, timeZone: string): number {
+  const start = dayKeyInTz(new Date(entry.started_at), timeZone);
+  const end = dayKeyInTz(entryEndAt(entry), timeZone);
+  if (start === end) return 0;
+  return Math.round(
+    (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) /
+      86_400_000,
+  );
+}
+
 /** Days a soft-deleted entry stays restorable before it is purged. */
 export const DELETED_RETENTION_DAYS = 14;
 
