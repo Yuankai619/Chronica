@@ -13,7 +13,7 @@ import { ExternalLink } from "lucide-react";
 import { TaskCompleteCheckbox } from "@/components/task-complete-checkbox";
 import { RefreshTasksButton } from "@/components/refresh-tasks-button";
 import { cn } from "@/lib/utils";
-import { dayKeyInTz, shiftedDayKey, zonedDayStart } from "@/lib/tz";
+import { dayKeyInTz, shiftedDayKey, timeInTz, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
 
 export const metadata = { title: "Tasks — Chronica" };
@@ -216,10 +216,7 @@ export default async function TasksPage({
                   <TaskTitle title={task.title} />
                 </span>
                 <span className="font-mono text-xs text-muted tabular-nums">
-                  {new Date(task.completed_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {timeInTz(new Date(task.completed_at), timeZone)}
                 </span>
               </li>
             ))}
@@ -285,7 +282,7 @@ export default async function TasksPage({
                     </td>
                     <td className="py-2.5 text-right font-mono text-muted tabular-nums">
                       {isLinked && task.lastActivity
-                        ? new Date(task.lastActivity).toLocaleDateString()
+                        ? dayKeyInTz(new Date(task.lastActivity), timeZone)
                         : "—"}
                     </td>
                   </tr>

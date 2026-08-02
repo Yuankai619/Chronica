@@ -21,6 +21,7 @@ import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { pickerTasks, type PickerSections } from "@/lib/tasks";
+import { timeInTz } from "@/lib/tz";
 
 type TaskPickerSections = PickerSections | null | undefined;
 import { TaskPicker } from "@/components/task-picker";
@@ -29,16 +30,6 @@ import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/** 24-hour HH:mm in the user's timezone; the browser locale must not decide. */
-function hhmm(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
 }
 
 function EntryForm({
@@ -218,7 +209,8 @@ function EntryRow({
           <span className="text-sm text-muted">{entry.note}</span>
         ) : null}
         <span className="font-mono text-xs text-muted tabular-nums">
-          {hhmm(startedAt, timeZone)} → {hhmm(entryEndAt(entry), timeZone)}
+          {timeInTz(startedAt, timeZone)} →{" "}
+          {timeInTz(entryEndAt(entry), timeZone)}
           {dayOffset > 0
             ? ` (+${dayOffset} ${dayOffset === 1 ? "day" : "days"})`
             : ""}

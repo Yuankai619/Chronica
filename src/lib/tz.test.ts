@@ -5,11 +5,24 @@ import {
   isValidTimeZone,
   parseWeekParam,
   shiftedDayKey,
+  timeInTz,
   weekDayKeysOf,
   weekStartKeyOf,
   weekdayOfKey,
   zonedDayStart,
 } from "./tz";
+
+describe("timeInTz", () => {
+  it("is 24-hour and independent of the ambient locale", () => {
+    const instant = new Date("2026-08-02T12:00:00Z");
+    expect(timeInTz(instant, "UTC")).toBe("12:00");
+    expect(timeInTz(instant, "Asia/Taipei")).toBe("20:00");
+  });
+
+  it("pads single-digit hours", () => {
+    expect(timeInTz(new Date("2026-08-02T01:05:00Z"), "UTC")).toBe("01:05");
+  });
+});
 
 describe("shiftedDayKey", () => {
   it("offsets today's key in the given timezone", () => {
