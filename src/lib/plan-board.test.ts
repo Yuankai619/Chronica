@@ -176,6 +176,25 @@ describe("weekDayGaps (vs planned)", () => {
     expect(gaps[0].unrecordedMinutes).toBe(300);
     expect(gaps[1].plannedMinutes).toBe(0);
   });
+
+  it("splits the day into category segments, largest first", () => {
+    const gaps = weekDayGaps(
+      monday,
+      [
+        entry("reading", 60, new Date("2026-07-13T08:00:00Z")),
+        entry("writing", 120, new Date("2026-07-13T10:00:00Z")),
+        entry("reading", 30, new Date("2026-07-13T14:00:00Z")),
+      ],
+      new Map(),
+      "UTC",
+    );
+    expect(gaps[0].segments).toEqual([
+      { categoryId: "writing", minutes: 120 },
+      { categoryId: "reading", minutes: 90 },
+    ]);
+    expect(gaps[0].recordedMinutes).toBe(210);
+    expect(gaps[1].segments).toEqual([]);
+  });
 });
 
 describe("formatSignedDuration", () => {
