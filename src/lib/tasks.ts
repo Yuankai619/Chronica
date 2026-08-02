@@ -53,13 +53,12 @@ export function isUrlTitle(title: string): boolean {
   return /^https?:\/\/\S+$/.test(title.trim());
 }
 
-/** "2026-07-20T00:00:00" (UTC from Graph) → local "2026-07-20"; null-safe. */
+/**
+ * The due date as written. Graph sends UTC midnight to mean a plain date,
+ * so converting it to a timezone would shift the day west of UTC.
+ */
 export function dueDateKey(dueDate: string | null): string | null {
-  if (!dueDate) return null;
-  // Graph returns UTC datetimes — convert to local date.
-  const d = new Date(dueDate.endsWith("Z") ? dueDate : `${dueDate}Z`);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return dueDate ? dueDate.slice(0, 10) : null;
 }
 
 /** Groups tasks by list title, preserving encounter order. */

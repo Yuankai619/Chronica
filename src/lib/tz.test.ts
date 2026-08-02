@@ -4,11 +4,22 @@ import {
   dayKeyInTz,
   isValidTimeZone,
   parseWeekParam,
+  shiftedDayKey,
   weekDayKeysOf,
   weekStartKeyOf,
   weekdayOfKey,
   zonedDayStart,
 } from "./tz";
+
+describe("shiftedDayKey", () => {
+  it("offsets today's key in the given timezone", () => {
+    const now = new Date("2026-08-02T17:30:00Z");
+    // 01:30 on the 3rd in Taipei, so tomorrow is the 4th.
+    expect(shiftedDayKey(1, "Asia/Taipei", now)).toBe("2026-08-04");
+    expect(shiftedDayKey(1, "UTC", now)).toBe("2026-08-03");
+    expect(shiftedDayKey(0, "UTC", now)).toBe("2026-08-02");
+  });
+});
 
 describe("parseWeekParam", () => {
   it("normalizes a mid-week date to its Monday", () => {

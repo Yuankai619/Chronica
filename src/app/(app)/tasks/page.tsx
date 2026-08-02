@@ -2,13 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
 import { isUrlTitle, dueDateKey } from "@/lib/tasks";
-import { shiftedDayKey } from "@/lib/timezone";
 import { getOpenTasks } from "@/server/microsoft";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
 import { TaskCompleteCheckbox } from "@/components/task-complete-checkbox";
 import { cn } from "@/lib/utils";
-import { dayKeyInTz, zonedDayStart } from "@/lib/tz";
+import { dayKeyInTz, shiftedDayKey, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
 
 export const metadata = { title: "Tasks — Chronica" };
@@ -52,24 +51,17 @@ export default async function TasksPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch user's timezone setting (default Asia/Taipei).
-  const { data: settings } = await supabase
-    .from("user_settings")
-    .select("timezone")
-    .eq("user_id", user!.id)
-    .maybeSingle();
-  const tz = settings?.timezone ?? "Asia/Taipei";
+  const timeZone = await getUserTimeZone();
 
   // Completed-today rows expire after the day passes: purge, then read.
-  const timeZone = await getUserTimeZone();
   const todayStart = zonedDayStart(dayKeyInTz(new Date(), timeZone), timeZone);
   await supabase
     .from("completed_tasks")
     .delete()
     .lt("completed_at", todayStart.toISOString());
 
-  // Use the user's timezone to determine "today" for task filtering.
-  const windowEndKey = shiftedDayKey(1, tz);
+  // One day of slack so a task due tonight still counts as due today.
+  const windowEndKey = shiftedDayKey(1, timeZone);
 
   const [{ data: entries }, { data: completed }, allTasks] = await Promise.all([
     supabase
