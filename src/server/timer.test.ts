@@ -82,6 +82,7 @@ function makeSession(overrides?: Partial<TimerSession>): TimerSession {
     cap_minutes: 240,
     expected_minutes: null,
     planned_item_id: null,
+    planned_item_title: null,
     todo_task_id: null,
     todo_task_title: null,
     todo_list_id: null,
@@ -124,6 +125,43 @@ describe("saveAndClearSession", () => {
     await saveAndClearSession(mock.supabase, session, new Date());
 
     expect(mock.plannedItemUpdates).toContain("plan-42");
+  });
+
+  it("copies the snapshotted calendar title into the entry note", async () => {
+    const mock = createMockSupabase();
+    const session = makeSession({
+      planned_item_id: "plan-42",
+      planned_item_title: "Q3 planning",
+    });
+    mock.sessions.set(session.id, session);
+
+    await saveAndClearSession(mock.supabase, session, new Date());
+
+    expect(mock.inserts[0].note).toBe("Q3 planning");
+  });
+
+  it("writes the note even when the calendar item was deleted mid-session", async () => {
+    const mock = createMockSupabase();
+    // The sync deletes the planned item and the FK sets planned_item_id null.
+    const session = makeSession({
+      planned_item_id: null,
+      planned_item_title: "Q3 planning",
+    });
+    mock.sessions.set(session.id, session);
+
+    await saveAndClearSession(mock.supabase, session, new Date());
+
+    expect(mock.inserts[0].note).toBe("Q3 planning");
+  });
+
+  it("leaves the note null for a manual session", async () => {
+    const mock = createMockSupabase();
+    const session = makeSession();
+    mock.sessions.set(session.id, session);
+
+    await saveAndClearSession(mock.supabase, session, new Date());
+
+    expect(mock.inserts[0].note).toBeNull();
   });
 
   it("second concurrent call for the same session is a no-op (no duplicate entry)", async () => {

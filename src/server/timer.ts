@@ -53,6 +53,9 @@ export async function saveAndClearSession(
     started_at: session.started_at,
     duration_minutes: settled.durationMinutes,
     source: "timer",
+    // Snapshotted at session start, so a renamed or removed event cannot
+    // rewrite what the entry says.
+    note: session.planned_item_title,
     // A calendar session ending at its window bound is expected, not an
     // anomaly needing review.
     needs_confirmation: isCalendar ? false : settled.needsConfirmation,
@@ -152,6 +155,7 @@ export async function ensureCalendarSession(
     expected_minutes: durationMinutes,
     cap_minutes: durationMinutes,
     planned_item_id: dueItem.id,
+    planned_item_title: dueItem.title,
   });
   if (error && error.code !== "23505") return session;
 
