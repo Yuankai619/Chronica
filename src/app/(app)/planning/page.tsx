@@ -19,11 +19,6 @@ import { CalendarSyncButton } from "@/components/calendar-sync-button";
 import { CopyWeekButton } from "@/components/copy-week-button";
 import { isGoogleLinked } from "@/server/google-calendar";
 import { CategoryBadge } from "@/components/ui/badge";
-import { PrototypeSwitcher } from "@/components/prototype-switcher";
-import {
-  PLAN_VARIANTS,
-  PLAN_VARIANT_LABELS,
-} from "@/components/plan-board-variants";
 
 export const metadata = { title: "Planning — Chronica" };
 
@@ -37,9 +32,9 @@ function parseWeekParam(raw: string | undefined, todayKey: string): string {
 export default async function PlanningPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; variant?: string }>;
+  searchParams: Promise<{ week?: string }>;
 }) {
-  const { week, variant } = await searchParams;
+  const { week } = await searchParams;
   const timeZone = await getUserTimeZone();
   const todayKey = dayKeyInTz(new Date(), timeZone);
   const weekKey = parseWeekParam(week, todayKey);
@@ -171,9 +166,6 @@ export default async function PlanningPage({
           todayKey={todayKey}
           items={items ?? []}
           categories={sorted}
-          variant={
-            variant && PLAN_VARIANTS.includes(variant as "A") ? variant : "A"
-          }
         />
       </div>
 
@@ -181,10 +173,6 @@ export default async function PlanningPage({
         reviewWeekKey={reviewWeekKey}
         initialContent={retro?.content ?? null}
         disabled={(reviewEntryCount ?? 0) === 0}
-      />
-      <PrototypeSwitcher
-        variants={[...PLAN_VARIANTS]}
-        labels={PLAN_VARIANT_LABELS}
       />
     </main>
   );

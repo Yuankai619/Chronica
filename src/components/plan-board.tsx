@@ -33,7 +33,6 @@ import type { PlannedItem } from "@/lib/plan-board";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { CategoryBadge } from "@/components/ui/badge";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -64,21 +63,16 @@ function ItemCard({
   categories = [],
   onDelete,
   overlay = false,
-  variant = "A",
 }: {
   item: PlannedItem;
   category: Category | undefined;
   categories?: Category[];
   onDelete?: () => void;
   overlay?: boolean;
-  // PROTOTYPE (#64) — touch affordance variant.
-  variant?: string;
 }) {
   const [assigning, startAssign] = useTransition();
   const [editing, setEditing] = useState(false);
   const [editPending, startEditTransition] = useTransition();
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const confirmDelete = useConfirm();
   const isCalendar = item.gcal_event_id !== null;
   const {
     attributes,
@@ -144,11 +138,6 @@ function ItemCard({
     );
   }
 
-  // PROTOTYPE (#64): A moves the drag listeners onto the grip so the card
-  // body stays tappable and the page stays scrollable on touch.
-  const handleOnly = variant === "A";
-  const dragProps = overlay ? {} : { ...attributes, ...listeners };
-
   return (
     <div
       ref={overlay ? undefined : setNodeRef}
@@ -158,36 +147,19 @@ function ItemCard({
           : { transform: CSS.Transform.toString(transform), transition }
       }
       className={cn(
-        "group flex items-start gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2 select-none",
-        handleOnly ? "touch-pan-y" : "touch-none",
+        "group flex touch-none items-start gap-1.5 rounded-md border border-hairline bg-panel px-2 py-2 select-none",
         isCalendar && "border-l-2 border-l-[#7cc0f5]",
         isDragging && "opacity-40",
         overlay && "shadow-xl shadow-black/50",
       )}
-      {...(handleOnly ? {} : dragProps)}
+      {...(overlay ? {} : attributes)}
+      {...(overlay ? {} : listeners)}
     >
-      {handleOnly ? (
-        <span
-          aria-label="Drag to reorder"
-          className="-m-1 shrink-0 cursor-grab touch-none p-1 text-muted/60"
-          {...dragProps}
-        >
-          <GripVertical className="size-4" aria-hidden />
-        </span>
-      ) : (
-        <GripVertical
-          className="mt-0.5 size-3.5 shrink-0 text-muted/60"
-          aria-hidden
-        />
-      )}
-      <div
-        className="flex min-w-0 flex-1 flex-col gap-1"
-        onClick={
-          variant === "C" && !overlay
-            ? () => setActionsOpen((v) => !v)
-            : undefined
-        }
-      >
+      <GripVertical
+        className="mt-0.5 size-3.5 shrink-0 text-muted/60"
+        aria-hidden
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         {isCalendar ? (
           <>
             <span className="flex items-center gap-1 text-[0.65rem] tracking-[0.08em] text-[#7cc0f5] uppercase">
@@ -240,80 +212,31 @@ function ItemCard({
             {formatDuration(item.expected_minutes)}
           </span>
         </span>
-        {variant === "C" && actionsOpen && !overlay ? (
-          <div className="mt-1 flex gap-1">
-            {!isCalendar ? (
-              <button
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setEditing(true);
-                }}
-                className="flex-1 cursor-pointer rounded-sm border border-hairline py-1.5 text-xs text-muted hover:text-foreground"
-              >
-                Edit
-              </button>
-            ) : null}
-            {onDelete ? (
-              <button
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete();
-                }}
-                className="flex-1 cursor-pointer rounded-sm border border-hairline py-1.5 text-xs text-danger"
-              >
-                Delete
-              </button>
-            ) : null}
-          </div>
-        ) : null}
       </div>
-      {variant === "C" ? null : (
-        <span className="flex shrink-0 items-center gap-0.5">
-          {!isCalendar && !overlay ? (
-            <button
-              type="button"
-              aria-label="Edit planned item"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => setEditing(true)}
-              className={cn(
-                "-m-1 cursor-pointer p-1 text-muted/60 transition-opacity hover:text-foreground focus:opacity-100",
-                variant === "B" &&
-                  "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100",
-              )}
-            >
-              <Pencil className="size-4" aria-hidden />
-            </button>
-          ) : null}
-          {onDelete ? (
-            <button
-              type="button"
-              aria-label="Remove planned item"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() =>
-                variant === "B" ? confirmDelete.request(onDelete) : onDelete()
-              }
-              className={cn(
-                "-m-1 cursor-pointer p-1 text-muted/60 transition-opacity hover:text-danger focus:opacity-100",
-                variant === "B" &&
-                  "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100",
-              )}
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          ) : null}
-        </span>
-      )}
-      <ConfirmDialog
-        open={confirmDelete.open}
-        title="Remove this planned item?"
-        onConfirm={confirmDelete.confirm}
-        onCancel={confirmDelete.cancel}
-        confirmLabel="Remove"
-      />
+      <span className="flex shrink-0 items-center gap-0.5">
+        {!isCalendar && !overlay ? (
+          <button
+            type="button"
+            aria-label="Edit planned item"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setEditing(true)}
+            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus:opacity-100"
+          >
+            <Pencil className="size-3.5" aria-hidden />
+          </button>
+        ) : null}
+        {onDelete ? (
+          <button
+            type="button"
+            aria-label="Remove planned item"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onDelete}
+            className="cursor-pointer text-muted/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus:opacity-100"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        ) : null}
+      </span>
     </div>
   );
 }
@@ -393,7 +316,6 @@ function DayColumn({
   categoryById,
   onDelete,
   onError,
-  variant,
 }: {
   day: string;
   label: string;
@@ -403,7 +325,6 @@ function DayColumn({
   categoryById: Map<string, Category>;
   onDelete: (id: string) => void;
   onError: (message: string | null) => void;
-  variant?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: day });
   const totalMinutes = items.reduce((s, i) => s + i.expected_minutes, 0);
@@ -444,7 +365,6 @@ function DayColumn({
               }
               categories={categories}
               onDelete={() => onDelete(item.id)}
-              variant={variant}
             />
           ))}
         </div>
@@ -459,14 +379,11 @@ export function PlanBoard({
   todayKey,
   items,
   categories,
-  variant,
 }: {
   dayKeys: string[];
   todayKey: string;
   items: PlannedItem[];
   categories: Category[];
-  // PROTOTYPE (#64) — touch affordance variant.
-  variant?: string;
 }) {
   const [columns, setColumns] = useState<Columns>(() =>
     buildColumns(dayKeys, items),
@@ -599,7 +516,6 @@ export function PlanBoard({
               categoryById={categoryById}
               onDelete={handleDelete}
               onError={setError}
-              variant={variant}
             />
           ))}
         </div>
