@@ -246,7 +246,26 @@ function EntryRow({
   );
 }
 
-export function EntriesManager({
+/** Quick add lives outside the week list so paging never remounts it. */
+export function QuickAddCard({
+  categories,
+  tasks,
+}: {
+  categories: Category[];
+  tasks: TodoTask[] | null;
+}) {
+  return (
+    <Card>
+      <CardTitle>Quick add</CardTitle>
+      <EntryForm
+        categories={categories.filter((c) => c.archived_at === null)}
+        tasks={tasks}
+      />
+    </Card>
+  );
+}
+
+export function EntryList({
   categories,
   entries,
   tasks,
@@ -257,43 +276,36 @@ export function EntriesManager({
   tasks: TodoTask[] | null;
   timeZone: string;
 }) {
-  const activeCategories = categories.filter((c) => c.archived_at === null);
   const days = groupEntriesByDay(entries, timeZone);
+
+  if (days.length === 0) {
+    return <p className="text-sm text-muted">No entries in this week.</p>;
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardTitle>Quick add</CardTitle>
-        <EntryForm categories={activeCategories} tasks={tasks} />
-      </Card>
-      {days.length === 0 ? (
-        <p className="text-sm text-muted">
-          No entries yet — run a timer or log one above.
-        </p>
-      ) : (
-        days.map((group) => (
-          <section key={group.day}>
-            <div className="flex items-baseline justify-between">
-              <h2 className="microlabel">{group.day}</h2>
-              <span className="font-mono text-xs text-muted tabular-nums">
-                {formatDuration(
-                  group.entries.reduce((sum, e) => sum + e.duration_minutes, 0),
-                )}
-              </span>
-            </div>
-            <ul className="mt-1 flex flex-col">
-              {group.entries.map((entry) => (
-                <EntryRow
-                  key={entry.id}
-                  entry={entry}
-                  categories={categories}
-                  tasks={tasks}
-                />
-              ))}
-            </ul>
-          </section>
-        ))
-      )}
+      {days.map((group) => (
+        <section key={group.day}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="microlabel">{group.day}</h2>
+            <span className="font-mono text-xs text-muted tabular-nums">
+              {formatDuration(
+                group.entries.reduce((sum, e) => sum + e.duration_minutes, 0),
+              )}
+            </span>
+          </div>
+          <ul className="mt-1 flex flex-col">
+            {group.entries.map((entry) => (
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                categories={categories}
+                tasks={tasks}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

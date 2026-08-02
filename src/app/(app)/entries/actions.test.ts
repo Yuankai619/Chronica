@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { deletedRetentionCutoff } from "@/lib/entries";
 
 const calls: Array<{
@@ -23,7 +23,18 @@ function builder(table: string, op: string, payload?: unknown) {
   return chain;
 }
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+
+const redirects: string[] = [];
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => {
+    redirects.push(url);
+  },
+}));
+
+vi.mock("@/server/tz", () => ({ getUserTimeZone: async () => "Asia/Taipei" }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
@@ -31,13 +42,23 @@ vi.mock("@/lib/supabase/server", () => ({
       getUser: async () => ({ data: { user: { id: "user-1" } } }),
     },
     from: (table: string) => ({
+      insert: (payload: unknown) => builder(table, "insert", payload),
       update: (payload: unknown) => builder(table, "update", payload),
       delete: () => builder(table, "delete"),
     }),
   }),
 }));
 
-import { deleteEntry } from "./actions";
+import { createEntry, deleteEntry } from "./actions";
+
+function quickAdd(startedAt: string): FormData {
+  const form = new FormData();
+  form.set("category_id", "cat-1");
+  form.set("started_at", startedAt);
+  form.set("duration", "30");
+  form.set("note", "");
+  return form;
+}
 
 describe("deleteEntry", () => {
   beforeEach(() => {
@@ -82,5 +103,31 @@ describe("deleteEntry", () => {
     await deleteEntry("entry-1");
 
     expect(calls.map((c) => c.op)).toEqual(["update", "delete"]);
+  });
+});
+
+describe("createEntry", () => {
+  beforeEach(() => {
+    calls.length = 0;
+    redirects.length = 0;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-02T09:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stays put when the entry lands in the current week", async () => {
+    await createEntry(quickAdd("2026-07-30T09:00:00Z"));
+
+    expect(calls.some((c) => c.op === "insert")).toBe(true);
+    expect(redirects).toEqual([]);
+  });
+
+  it("navigates to the week the entry landed in", async () => {
+    await createEntry(quickAdd("2026-07-16T09:00:00Z"));
+
+    expect(redirects).toEqual(["/entries?week=2026-07-13"]);
   });
 });
