@@ -2,4 +2,4 @@
 -- ---------------------------------------------------------------------------
 
 alter table public.user_settings
-  add column timezone text not null default 'Asia/Taipei';
+  add column if not exists timezone text not null default 'Asia/Taipei';

@@ -2,4 +2,4 @@
 -- stable auto palette.
 
 alter table public.categories
-  add column color text check (color ~ '^#[0-9a-f]{6}$');
+  add column if not exists color text check (color ~ '^#[0-9a-f]{6}$');
