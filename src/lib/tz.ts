@@ -22,6 +22,15 @@ export function addDaysKey(key: string, days: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
 
+/** The calendar day "now + offsetDays" in the given timezone. */
+export function shiftedDayKey(
+  offsetDays: number,
+  timeZone: string,
+  now: Date = new Date(),
+): string {
+  return addDaysKey(dayKeyInTz(now, timeZone), offsetDays);
+}
+
 /** Weekday of a calendar date (0 = Monday … 6 = Sunday); tz-independent. */
 export function weekdayOfKey(key: string): number {
   return (new Date(`${key}T00:00:00Z`).getUTCDay() + 6) % 7;
