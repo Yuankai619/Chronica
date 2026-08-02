@@ -250,13 +250,15 @@ export function EntriesManager({
   categories,
   entries,
   tasks,
+  timeZone,
 }: {
   categories: Category[];
   entries: TimeEntry[];
   tasks: TodoTask[] | null;
+  timeZone: string;
 }) {
   const activeCategories = categories.filter((c) => c.archived_at === null);
-  const days = groupEntriesByDay(entries);
+  const days = groupEntriesByDay(entries, timeZone);
 
   return (
     <div className="flex flex-col gap-6">

@@ -6,8 +6,8 @@ import { computeWeekStatus } from "@/lib/plan-board";
 import {
   addDaysKey,
   dayKeyInTz,
+  parseWeekParam,
   weekDayKeysOf,
-  weekStartKeyOf,
   zonedDayStart,
 } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
@@ -21,13 +21,6 @@ import { isGoogleLinked } from "@/server/google-calendar";
 import { CategoryBadge } from "@/components/ui/badge";
 
 export const metadata = { title: "Planning — Chronica" };
-
-function parseWeekParam(raw: string | undefined, todayKey: string): string {
-  if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return weekStartKeyOf(raw);
-  }
-  return weekStartKeyOf(todayKey);
-}
 
 export default async function PlanningPage({
   searchParams,
