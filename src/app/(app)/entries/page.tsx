@@ -12,20 +12,23 @@ import {
   weekStartKeyOf,
   zonedDayStart,
 } from "@/lib/tz";
-import type { TodoTask } from "@/lib/tasks";
+import type { PickerSections } from "@/lib/tasks";
+import { sortTasksForPicker } from "@/lib/tasks";
 
 export const metadata = { title: "Entries — Chronica" };
 
 async function WeekEntries({
   weekKey,
   timeZone,
+  todayKey,
   categories,
-  tasks,
+  taskSections,
 }: {
   weekKey: string;
   timeZone: string;
+  todayKey: string;
   categories: Category[];
-  tasks: TodoTask[] | null;
+  taskSections: PickerSections | null;
 }) {
   const supabase = await createClient();
   const weekStart = zonedDayStart(weekKey, timeZone);
@@ -51,8 +54,9 @@ async function WeekEntries({
     <EntryList
       categories={categories}
       entries={entries ?? []}
-      tasks={tasks}
+      taskSections={taskSections}
       timeZone={timeZone}
+      todayKey={todayKey}
     />
   );
 }
@@ -93,6 +97,7 @@ export default async function EntriesPage({
   ]);
 
   const sorted = sortCategories(categories ?? []);
+  const taskSections = tasks ? sortTasksForPicker(tasks, todayKey) : null;
   const navLink = "text-muted hover:text-foreground";
 
   return (
@@ -131,7 +136,11 @@ export default async function EntriesPage({
 
       {isCurrentWeek ? (
         <div className="mb-6">
-          <QuickAddCard categories={sorted} tasks={tasks} />
+          <QuickAddCard
+            categories={sorted}
+            taskSections={taskSections}
+            todayKey={todayKey}
+          />
         </div>
       ) : null}
 
@@ -139,8 +148,9 @@ export default async function EntriesPage({
         <WeekEntries
           weekKey={weekKey}
           timeZone={timeZone}
+          todayKey={todayKey}
           categories={sorted}
-          tasks={tasks}
+          taskSections={taskSections}
         />
       </Suspense>
     </main>

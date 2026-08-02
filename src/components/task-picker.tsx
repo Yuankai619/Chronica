@@ -5,17 +5,11 @@ import { Check, ChevronDown, ExternalLink, X } from "lucide-react";
 import {
   dueDateKey,
   encodeTaskOption,
-  groupTasksByList,
   isUrlTitle,
+  type PickerSections,
   type TodoTask,
 } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
-
-function dayKeyToday(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 function TaskTitle({
   title,
@@ -44,10 +38,16 @@ function TaskTitle({
   return <span className={cn("truncate", className)}>{title}</span>;
 }
 
-function DueBadge({ dueDate }: { dueDate: string | null }) {
+function DueBadge({
+  dueDate,
+  todayKey,
+}: {
+  dueDate: string | null;
+  todayKey: string;
+}) {
   const due = dueDateKey(dueDate);
   if (!due) return null;
-  const overdue = due < dayKeyToday();
+  const overdue = due < todayKey;
   return (
     <span
       className={cn(
@@ -61,22 +61,33 @@ function DueBadge({ dueDate }: { dueDate: string | null }) {
 }
 
 /**
- * Grouped To Do task picker: tasks are shown under their list name with
- * due dates; URL-only titles render as external links. Submits the
- * selected task via a hidden `name` input (same contract as before).
+ * To Do task picker. Overdue and due-today tasks are pinned to the top
+ * across lists; everything else stays grouped by list name. URL-only
+ * titles render as external links. Submits the selected task via a hidden
+ * `name` input (same contract as before).
+ *
+ * Sections and `todayKey` are resolved on the server: sorting here would
+ * make the order depend on the browser's locale and clock.
  */
 export function TaskPicker({
-  tasks,
+  sections,
+  todayKey,
   name = "task",
   initial = null,
 }: {
-  tasks: TodoTask[];
+  sections: PickerSections;
+  todayKey: string;
   name?: string;
   initial?: TodoTask | null;
 }) {
   const [selected, setSelected] = useState<TodoTask | null>(initial);
   const [open, setOpen] = useState(false);
-  const groups = groupTasksByList(tasks);
+  const visibleSections = [
+    ...(sections.due.length > 0
+      ? [{ list: "Due now", tasks: sections.due, pinned: true }]
+      : []),
+    ...sections.groups.map((g) => ({ ...g, pinned: false })),
+  ];
 
   return (
     <div className="relative">
@@ -103,7 +114,7 @@ export function TaskPicker({
         {selected ? (
           <span className="flex min-w-0 items-center gap-2">
             <TaskTitle title={selected.title} className="max-w-56" />
-            <DueBadge dueDate={selected.dueDate} />
+            <DueBadge dueDate={selected.dueDate} todayKey={todayKey} />
           </span>
         ) : (
           <span className="text-muted/70">Attach a To Do task (optional)</span>
@@ -135,7 +146,7 @@ export function TaskPicker({
             role="listbox"
             className="absolute z-40 mt-1 max-h-72 w-full min-w-64 overflow-y-auto rounded-md border border-hairline bg-panel shadow-xl shadow-black/40"
           >
-            {groups.map((group) => (
+            {visibleSections.map((group) => (
               <div key={group.list} className="py-1">
                 <p className="microlabel px-3 pt-2 pb-1">{group.list}</p>
                 {group.tasks.map((task) => {
@@ -170,8 +181,13 @@ export function TaskPicker({
                           aria-hidden
                         />
                         <TaskTitle title={task.title} />
+                        {group.pinned ? (
+                          <span className="shrink-0 text-xs text-muted">
+                            {task.listTitle}
+                          </span>
+                        ) : null}
                       </span>
-                      <DueBadge dueDate={task.dueDate} />
+                      <DueBadge dueDate={task.dueDate} todayKey={todayKey} />
                     </div>
                   );
                 })}
