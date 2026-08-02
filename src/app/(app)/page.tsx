@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { sortCategories } from "@/lib/categories";
+import { excludedCategoryIds, sortCategories } from "@/lib/categories";
 import { ensureCalendarSession } from "@/server/timer";
 import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
@@ -25,7 +25,7 @@ export default async function Home() {
     { data: plannedToday },
     tasks,
   ] = await Promise.all([
-    supabase.from("categories").select("*").is("archived_at", null),
+    supabase.from("categories").select("*"),
     ensureCalendarSession(supabase, user!.id),
     supabase
       .from("time_entries")
@@ -66,14 +66,13 @@ export default async function Home() {
       .map((i) => i.start_at!)
       .sort()[0] ?? null;
 
-  const plannedMinutes = (plannedToday ?? []).reduce(
-    (s, i) => s + i.expected_minutes,
-    0,
-  );
-  const recordedToday = (todayEntries ?? []).reduce(
-    (sum, e) => sum + e.duration_minutes,
-    0,
-  );
+  const excluded = excludedCategoryIds(categories ?? []);
+  const plannedMinutes = (plannedToday ?? [])
+    .filter((i) => i.category_id === null || !excluded.has(i.category_id))
+    .reduce((s, i) => s + i.expected_minutes, 0);
+  const recordedToday = (todayEntries ?? [])
+    .filter((e) => !excluded.has(e.category_id))
+    .reduce((sum, e) => sum + e.duration_minutes, 0);
   const remaining = Math.max(0, plannedMinutes - recordedToday);
 
   return (
@@ -81,7 +80,9 @@ export default async function Home() {
       <h1 className="mb-6 text-xl font-semibold">Timer</h1>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
         <TimerPanel
-          categories={sortCategories(categories ?? [])}
+          categories={sortCategories(
+            (categories ?? []).filter((c) => c.archived_at === null),
+          )}
           session={session}
           tasks={tasks}
           plannedToday={plannedToday ?? []}

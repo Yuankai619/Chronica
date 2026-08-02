@@ -101,12 +101,17 @@ async function buildContext(
   lines.push(`\n## Categories (descriptions are private AI context)`);
   for (const c of categories ?? []) {
     lines.push(
-      `- ${c.name}${c.archived_at ? " (archived)" : ""}${c.description ? `: ${c.description}` : ""}`,
+      `- ${c.name}${c.archived_at ? " (archived)" : ""}${c.excluded_from_totals ? " (not counted toward totals)" : ""}${c.description ? `: ${c.description}` : ""}`,
     );
   }
 
   lines.push(`\n## Settlement for ${reviewWeekKey}`);
   if (!settlement.hasPlan) lines.push(`(nothing was planned for this week)`);
+  if (settlement.excludedMinutes > 0 || settlement.excludedPlannedMinutes > 0) {
+    lines.push(
+      `Totals below exclude categories marked "not counted": ${formatDuration(settlement.excludedMinutes)} actual, ${formatDuration(settlement.excludedPlannedMinutes)} planned.`,
+    );
+  }
   for (const row of settlement.rows) {
     lines.push(
       `- ${row.category.name}: planned ${row.plannedMinutes === null ? "unset" : formatDuration(row.plannedMinutes)}, actual ${formatDuration(row.actualMinutes)}${row.diffMinutes === null ? "" : `, diff ${formatSignedDuration(row.diffMinutes)}`}`,

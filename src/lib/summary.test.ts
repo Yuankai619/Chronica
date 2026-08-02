@@ -3,7 +3,7 @@ import type { Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
 import { monthlyRecordedTrend, summarizePeriod } from "./summary";
 
-function category(id: string): Category {
+function category(id: string, excluded = false): Category {
   return {
     id,
     user_id: "u",
@@ -11,7 +11,7 @@ function category(id: string): Category {
     color: null,
     description: null,
     archived_at: null,
-    excluded_from_totals: false,
+    excluded_from_totals: excluded,
     created_at: "",
     updated_at: "",
   };
@@ -60,6 +60,33 @@ describe("summarizePeriod", () => {
     const gamesRow = summary.categories.find((r) => r.category.id === "games")!;
     expect(gamesRow.entryCount).toBe(2);
     expect(summary.categories[0].category.id).toBe("work");
+  });
+
+  it("lists an excluded category but keeps it out of the total", () => {
+    const sleep = category("sleep", true);
+    const summary = summarizePeriod(
+      [work, sleep],
+      [entry("work", 120), entry("sleep", 480), entry("sleep", 60)],
+    );
+
+    const sleepRow = summary.categories.find((r) => r.category.id === "sleep");
+    expect(sleepRow?.totalMinutes).toBe(540);
+    expect(summary.totalMinutes).toBe(120);
+    expect(summary.excludedMinutes).toBe(540);
+  });
+
+  it("still counts excluded entries in entryCount", () => {
+    const sleep = category("sleep", true);
+    const summary = summarizePeriod(
+      [work, sleep],
+      [entry("work", 120), entry("sleep", 480)],
+    );
+    expect(summary.entryCount).toBe(2);
+  });
+
+  it("reports zero excluded minutes when nothing is flagged", () => {
+    const summary = summarizePeriod([work], [entry("work", 120)]);
+    expect(summary.excludedMinutes).toBe(0);
   });
 });
 

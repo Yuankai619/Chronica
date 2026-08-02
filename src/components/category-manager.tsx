@@ -88,6 +88,21 @@ function CategoryForm({
         defaultValue={category?.description ?? ""}
         rows={2}
       />
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="excluded_from_totals"
+          defaultChecked={category?.excluded_from_totals ?? false}
+          className="mt-0.5 size-4 cursor-pointer accent-[var(--color-accent)]"
+        />
+        <span>
+          Exclude from total hours
+          <span className="block text-xs text-muted">
+            Time is still recorded and listed — it just does not count toward
+            any total.
+          </span>
+        </span>
+      </label>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
           {category ? "Save" : "Add category"}

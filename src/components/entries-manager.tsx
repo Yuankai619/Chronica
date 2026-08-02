@@ -13,6 +13,7 @@ import {
   type TimeEntry,
 } from "@/lib/entries";
 import type { Category } from "@/lib/categories";
+import { excludedCategoryIds } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -277,6 +278,7 @@ export function EntryList({
   timeZone: string;
 }) {
   const days = groupEntriesByDay(entries, timeZone);
+  const excluded = excludedCategoryIds(categories);
 
   if (days.length === 0) {
     return <p className="text-sm text-muted">No entries in this week.</p>;
@@ -290,7 +292,9 @@ export function EntryList({
             <h2 className="microlabel">{group.day}</h2>
             <span className="font-mono text-xs text-muted tabular-nums">
               {formatDuration(
-                group.entries.reduce((sum, e) => sum + e.duration_minutes, 0),
+                group.entries
+                  .filter((e) => !excluded.has(e.category_id))
+                  .reduce((sum, e) => sum + e.duration_minutes, 0),
               )}
             </span>
           </div>

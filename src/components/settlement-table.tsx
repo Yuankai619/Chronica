@@ -1,6 +1,7 @@
 import { formatSignedDuration, type WeekSettlement } from "@/lib/settlement";
 import { formatDuration } from "@/lib/entries";
 import { CategoryBadge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export function SettlementTable({
   settlement,
@@ -28,7 +29,23 @@ export function SettlementTable({
         </thead>
         <tbody>
           {settlement.rows.map((row) => (
-            <tr key={row.category.id} className="border-b border-hairline">
+            <tr
+              key={row.category.id}
+              className={cn(
+                "border-b border-hairline",
+                row.category.excluded_from_totals && "opacity-70",
+              )}
+              title={
+                row.category.excluded_from_totals
+                  ? "Not counted toward the totals"
+                  : undefined
+              }
+              aria-label={
+                row.category.excluded_from_totals
+                  ? `${row.category.name}, not counted toward the totals`
+                  : undefined
+              }
+            >
               <td className="py-2.5">
                 <CategoryBadge
                   id={row.category.id}
@@ -36,7 +53,13 @@ export function SettlementTable({
                   color={row.category.color}
                 />
               </td>
-              <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+              <td
+                className={cn(
+                  "py-2.5 text-right font-mono tabular-nums",
+                  // The row is already dimmed; muting on top would stack.
+                  row.category.excluded_from_totals ? "" : "text-muted",
+                )}
+              >
                 {row.plannedMinutes === null
                   ? "—"
                   : formatDuration(row.plannedMinutes)}

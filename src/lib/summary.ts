@@ -12,6 +12,8 @@ export interface CategorySummary {
 export interface PeriodSummary {
   categories: CategorySummary[];
   totalMinutes: number;
+  /** Minutes from excluded categories, already left out of totalMinutes. */
+  excludedMinutes: number;
   entryCount: number;
 }
 
@@ -42,9 +44,19 @@ export function summarizePeriod(
 
   rows.sort((a, b) => b.totalMinutes - a.totalMinutes);
 
+  // Excluded categories keep their row and their own number; only the
+  // total leaves them out.
+  let totalMinutes = 0;
+  let excludedMinutes = 0;
+  for (const row of rows) {
+    if (row.category.excluded_from_totals) excludedMinutes += row.totalMinutes;
+    else totalMinutes += row.totalMinutes;
+  }
+
   return {
     categories: rows,
-    totalMinutes: rows.reduce((s, r) => s + r.totalMinutes, 0),
+    totalMinutes,
+    excludedMinutes,
     entryCount: entries.length,
   };
 }
