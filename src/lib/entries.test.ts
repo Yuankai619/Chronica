@@ -110,13 +110,23 @@ describe("groupEntriesByDay", () => {
     };
   }
 
-  it("groups by local day, newest first", () => {
-    const groups = groupEntriesByDay([
-      entry("a", new Date(2026, 6, 12, 9, 0).toISOString()),
-      entry("b", new Date(2026, 6, 13, 8, 0).toISOString()),
-      entry("c", new Date(2026, 6, 13, 22, 0).toISOString()),
-    ]);
+  it("groups by the user's timezone, newest day first", () => {
+    const groups = groupEntriesByDay(
+      [
+        entry("a", "2026-07-12T09:00:00Z"),
+        entry("b", "2026-07-13T08:00:00Z"),
+        entry("c", "2026-07-13T22:00:00Z"),
+      ],
+      "UTC",
+    );
     expect(groups.map((g) => g.day)).toEqual(["2026-07-13", "2026-07-12"]);
     expect(groups[0].entries.map((e) => e.id)).toEqual(["c", "b"]);
+  });
+
+  it("puts the same instant on different days in different timezones", () => {
+    // 2026-07-13 17:30 UTC = 2026-07-14 01:30 in Taipei (+8).
+    const entries = [entry("a", "2026-07-13T17:30:00Z")];
+    expect(groupEntriesByDay(entries, "UTC")[0].day).toBe("2026-07-13");
+    expect(groupEntriesByDay(entries, "Asia/Taipei")[0].day).toBe("2026-07-14");
   });
 });

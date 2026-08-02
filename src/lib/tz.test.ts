@@ -3,11 +3,28 @@ import {
   addDaysKey,
   dayKeyInTz,
   isValidTimeZone,
+  parseWeekParam,
   weekDayKeysOf,
   weekStartKeyOf,
   weekdayOfKey,
   zonedDayStart,
 } from "./tz";
+
+describe("parseWeekParam", () => {
+  it("normalizes a mid-week date to its Monday", () => {
+    expect(parseWeekParam("2026-07-16", "2026-08-02")).toBe("2026-07-13");
+  });
+
+  it("keeps a Monday as-is", () => {
+    expect(parseWeekParam("2026-07-13", "2026-08-02")).toBe("2026-07-13");
+  });
+
+  it("falls back to the week of today when absent or malformed", () => {
+    expect(parseWeekParam(undefined, "2026-08-02")).toBe("2026-07-27");
+    expect(parseWeekParam("last-week", "2026-08-02")).toBe("2026-07-27");
+    expect(parseWeekParam("2026-7-16", "2026-08-02")).toBe("2026-07-27");
+  });
+});
 
 describe("dayKeyInTz", () => {
   it("crosses midnight per timezone, not per server clock", () => {

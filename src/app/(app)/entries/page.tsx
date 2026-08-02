@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
 import { EntriesManager } from "@/components/entries-manager";
 import { getOpenTasks } from "@/server/microsoft";
+import { getUserTimeZone } from "@/server/tz";
 
 export const metadata = { title: "Entries — Chronica" };
 
@@ -12,6 +13,8 @@ export default async function EntriesPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const timeZone = await getUserTimeZone();
 
   const since = new Date();
   since.setDate(since.getDate() - DAYS_SHOWN);
@@ -45,6 +48,7 @@ export default async function EntriesPage() {
         categories={sortCategories(categories ?? [])}
         entries={entries ?? []}
         tasks={tasks}
+        timeZone={timeZone}
       />
     </main>
   );

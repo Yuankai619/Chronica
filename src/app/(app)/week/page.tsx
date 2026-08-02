@@ -7,6 +7,7 @@ import { plannedByCategory, plannedByDay } from "@/lib/plan-board";
 import {
   addDaysKey,
   dayKeyInTz,
+  parseWeekParam,
   weekDayKeysOf,
   weekStartKeyOf,
   zonedDayStart,
@@ -18,13 +19,6 @@ import { DayGaps } from "@/components/day-gaps";
 import { Card } from "@/components/ui/card";
 
 export const metadata = { title: "Week — Chronica" };
-
-function parseWeekParam(raw: string | undefined, todayKey: string): string {
-  if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return weekStartKeyOf(raw);
-  }
-  return weekStartKeyOf(todayKey);
-}
 
 export default async function WeekPage({
   searchParams,
