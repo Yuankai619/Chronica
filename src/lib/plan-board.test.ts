@@ -21,6 +21,7 @@ function category(id: string): Category {
     color: null,
     description: null,
     archived_at: null,
+    excluded_from_totals: false,
     created_at: "",
     updated_at: "",
   };
