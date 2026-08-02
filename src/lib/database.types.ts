@@ -245,6 +245,7 @@ export interface Database {
           color: string | null;
           description: string | null;
           archived_at: string | null;
+          excluded_from_totals: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -255,6 +256,7 @@ export interface Database {
           color?: string | null;
           description?: string | null;
           archived_at?: string | null;
+          excluded_from_totals?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -265,6 +267,7 @@ export interface Database {
           color?: string | null;
           description?: string | null;
           archived_at?: string | null;
+          excluded_from_totals?: boolean;
           created_at?: string;
           updated_at?: string;
         };

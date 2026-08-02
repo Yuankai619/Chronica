@@ -26,6 +26,7 @@ export async function createCategory(
     name: formData.get("name"),
     color: formData.get("color"),
     description: formData.get("description"),
+    excludedFromTotals: formData.get("excluded_from_totals"),
   });
   if (!parsed.ok) return { error: parsed.error };
 
@@ -48,6 +49,7 @@ export async function updateCategory(
     name: formData.get("name"),
     color: formData.get("color"),
     description: formData.get("description"),
+    excludedFromTotals: formData.get("excluded_from_totals"),
   });
   if (!parsed.ok) return { error: parsed.error };
 

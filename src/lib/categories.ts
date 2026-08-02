@@ -6,6 +6,7 @@ export interface CategoryInput {
   name: string;
   color: string | null;
   description: string | null;
+  excluded_from_totals: boolean;
 }
 
 /** Preset swatches offered in the category form. */
@@ -23,6 +24,7 @@ export function parseCategoryInput(values: {
   name: unknown;
   color: unknown;
   description: unknown;
+  excludedFromTotals: unknown;
 }): { ok: true; input: CategoryInput } | { ok: false; error: string } {
   const name = typeof values.name === "string" ? values.name.trim() : "";
   if (name.length === 0) return { ok: false, error: "Name is required." };
@@ -44,8 +46,17 @@ export function parseCategoryInput(values: {
       name,
       color: rawColor === "" ? null : rawColor,
       description: rawDescription.length > 0 ? rawDescription : null,
+      // An unchecked box is absent from the form data, not falsy.
+      excluded_from_totals: values.excludedFromTotals !== null,
     },
   };
+}
+
+/** Ids of categories whose time must not reach any total. */
+export function excludedCategoryIds(categories: Category[]): Set<string> {
+  return new Set(
+    categories.filter((c) => c.excluded_from_totals).map((c) => c.id),
+  );
 }
 
 /** Sorts categories by name; active before archived. */
