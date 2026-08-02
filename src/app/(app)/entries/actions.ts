@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import { deletedRetentionCutoff, parseEntryInput } from "@/lib/entries";
+import { dayKeyInTz, weekStartKeyOf } from "@/lib/tz";
+import { getUserTimeZone } from "@/server/tz";
 import { decodeTaskOption } from "@/lib/tasks";
 
 export interface ActionResult {
@@ -49,6 +52,16 @@ export async function createEntry(formData: FormData): Promise<ActionResult> {
   if (error) return { error: error.message };
 
   revalidatePath("/entries");
+
+  // Quick add only shows on the current week, so an entry dated elsewhere
+  // would vanish without feedback — send the user to where it landed.
+  const timeZone = await getUserTimeZone();
+  const entryWeek = weekStartKeyOf(
+    dayKeyInTz(new Date(parsed.input.started_at), timeZone),
+  );
+  const currentWeek = weekStartKeyOf(dayKeyInTz(new Date(), timeZone));
+  if (entryWeek !== currentWeek) redirect(`/entries?week=${entryWeek}`);
+
   return {};
 }
 

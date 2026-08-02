@@ -80,6 +80,9 @@ Repo-installed skills (symlinked into `.claude/skills/`):
   Every read of `time_entries` must carry `deleted_at is null`; the only
   exception is the count in `deleteCategory()` that decides whether a category
   can be hard-deleted.
+- Entries pages one **week** at a time via `?week=`; day and week attribution
+  always goes through the timezone-aware helpers in `src/lib/tz.ts` and the
+  user's configured timezone, never the server's or the browser's local time.
 - Weekly plans are **snapshots** — editing past entries never rewrites a saved plan.
 - Category descriptions are admin/AI context only; never render them on the
   execution/timer UI.
