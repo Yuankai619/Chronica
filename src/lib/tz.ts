@@ -27,9 +27,23 @@ export function weekdayOfKey(key: string): number {
   return (new Date(`${key}T00:00:00Z`).getUTCDay() + 6) % 7;
 }
 
-/** Monday key of the week containing the given day key. */
+/**
+ * Monday key of the week containing the given day key.
+ *
+ * The week starts on Monday. An entry belongs to the week in which it
+ * STARTED, even if it crosses midnight into the next week.
+ */
 export function weekStartKeyOf(key: string): string {
   return addDaysKey(key, -weekdayOfKey(key));
+}
+
+/** Normalizes a `?week=` search param to a Monday key; today's week on junk. */
+export function parseWeekParam(
+  raw: string | undefined,
+  todayKey: string,
+): string {
+  if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return weekStartKeyOf(raw);
+  return weekStartKeyOf(todayKey);
 }
 
 /** The 7 day keys of the week starting at a Monday key. */

@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/database.types";
+import { dayKeyInTz } from "@/lib/tz";
 
 export type TimeEntry = Tables<"time_entries">;
 
@@ -90,17 +91,17 @@ export function deletedRetentionCutoff(now: Date = new Date()): Date {
   return new Date(now.getTime() - DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 }
 
-/** Groups entries by local calendar day key (YYYY-MM-DD), newest day first. */
+/** Groups entries by the user's calendar day, newest day first. */
 export function groupEntriesByDay(
   entries: TimeEntry[],
+  timeZone: string,
 ): { day: string; entries: TimeEntry[] }[] {
   const groups = new Map<string, TimeEntry[]>();
   const sorted = entries.toSorted(
     (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
   );
   for (const entry of sorted) {
-    const d = new Date(entry.started_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const key = dayKeyInTz(new Date(entry.started_at), timeZone);
     const bucket = groups.get(key);
     if (bucket) {
       bucket.push(entry);
