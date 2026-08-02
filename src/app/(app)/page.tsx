@@ -85,7 +85,7 @@ export default async function Home() {
             (categories ?? []).filter((c) => c.archived_at === null),
           )}
           session={session}
-          taskSections={tasks ? sortTasksForPicker(tasks, todayKey) : null}
+          taskSections={sortTasksForPicker(tasks.tasks, todayKey)}
           plannedToday={plannedToday ?? []}
           todayKey={todayKey}
           calendarEvent={

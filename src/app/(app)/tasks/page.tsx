@@ -77,7 +77,9 @@ export default async function TasksPage({
       .from("completed_tasks")
       .select("*")
       .order("completed_at", { ascending: false }),
-    user ? getOpenTasks(supabase, user.id) : Promise.resolve(null),
+    user
+      ? getOpenTasks(supabase, user.id)
+      : Promise.resolve({ tasks: [], truncated: true }),
   ]);
 
   const completedIds = new Set((completed ?? []).map((c) => c.task_id));
@@ -105,7 +107,7 @@ export default async function TasksPage({
 
   // Add tasks due today or earlier (overdue) that don't already have
   // time entries. Use windowEndKey to cover timezone differences.
-  const dueTodayTasks = (allTasks ?? []).filter((t) => {
+  const dueTodayTasks = allTasks.tasks.filter((t) => {
     const dk = dueDateKey(t.dueDate);
     return dk !== null && dk <= windowEndKey;
   });

@@ -97,7 +97,7 @@ export default async function EntriesPage({
   ]);
 
   const sorted = sortCategories(categories ?? []);
-  const taskSections = tasks ? sortTasksForPicker(tasks, todayKey) : null;
+  const taskSections = sortTasksForPicker(tasks.tasks, todayKey);
   const navLink = "text-muted hover:text-foreground";
 
   return (

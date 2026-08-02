@@ -10,9 +10,19 @@ type Client = SupabaseClient<Database>;
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 const MAX_LISTS = 10;
+const TASKS_PER_LIST = 50;
 const TASK_CACHE_TTL_MS = 60 * 1000;
 
-const taskCache = new Map<string, { tasks: TodoTask[]; at: number }>();
+const taskCache = new Map<string, { result: OpenTasks; at: number }>();
+
+/**
+ * The open-task set, plus whether it is known to be incomplete. Callers
+ * must not infer "this task was completed elsewhere" from a truncated set.
+ */
+export interface OpenTasks {
+  tasks: TodoTask[];
+  truncated: boolean;
+}
 
 /** Drops the cached open-task list (e.g. after completing a task). */
 export function invalidateTaskCache(userId: string): void {
@@ -82,24 +92,24 @@ interface GraphTask {
 }
 
 /**
- * Open To Do tasks across the user's lists (read-only). Null when the
- * account is not linked or the API is unavailable — core features keep
- * working and only task attachment is disabled.
+ * Open To Do tasks across the user's lists (read-only). `truncated` marks
+ * the set as incomplete — because the account is unlinked, a request
+ * failed, or a cap was hit — so callers can hold back inferences.
  */
 export async function getOpenTasks(
   supabase: Client,
   userId: string,
-): Promise<TodoTask[] | null> {
+): Promise<OpenTasks> {
   const cached = taskCache.get(userId);
   if (cached && Date.now() - cached.at < TASK_CACHE_TTL_MS) {
-    return cached.tasks;
+    return cached.result;
   }
 
   const token = await getAccessToken(supabase, userId);
-  if (!token) return null;
+  if (!token) return { tasks: [], truncated: true };
 
   const lists = await graphGet<{ value: GraphList[] }>(token, "/me/todo/lists");
-  if (!lists) return null;
+  if (!lists) return { tasks: [], truncated: true };
 
   // Fetch every list's tasks in parallel — sequential round-trips were
   // the main cost of loading the timer and entries pages.
@@ -108,14 +118,21 @@ export async function getOpenTasks(
       list,
       result: await graphGet<{ value: GraphTask[] }>(
         token,
-        `/me/todo/lists/${list.id}/tasks?$top=50&$filter=status ne 'completed'`,
+        `/me/todo/lists/${list.id}/tasks?$top=${TASKS_PER_LIST}&$filter=status ne 'completed'`,
       ),
     })),
   );
 
+  let truncated = lists.value.length > MAX_LISTS;
   const tasks: TodoTask[] = [];
   for (const { list, result } of perList) {
-    if (!result) continue;
+    // A skipped list hides its open tasks, which would otherwise look
+    // like they had been completed elsewhere.
+    if (!result) {
+      truncated = true;
+      continue;
+    }
+    if (result.value.length >= TASKS_PER_LIST) truncated = true;
     for (const task of result.value) {
       const body = task.body?.content?.trim() ?? "";
       tasks.push({
@@ -128,8 +145,10 @@ export async function getOpenTasks(
       });
     }
   }
-  taskCache.set(userId, { tasks, at: Date.now() });
-  return tasks;
+
+  const result = { tasks, truncated };
+  taskCache.set(userId, { result, at: Date.now() });
+  return result;
 }
 
 /**
