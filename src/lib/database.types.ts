@@ -333,6 +333,7 @@ export interface Database {
           expected_minutes: number | null;
           cap_minutes: number;
           planned_item_id: string | null;
+          planned_item_title: string | null;
           todo_task_id: string | null;
           todo_task_title: string | null;
           todo_list_id: string | null;
@@ -346,6 +347,7 @@ export interface Database {
           expected_minutes?: number | null;
           cap_minutes: number;
           planned_item_id?: string | null;
+          planned_item_title?: string | null;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;
@@ -359,6 +361,7 @@ export interface Database {
           expected_minutes?: number | null;
           cap_minutes?: number;
           planned_item_id?: string | null;
+          planned_item_title?: string | null;
           todo_task_id?: string | null;
           todo_task_title?: string | null;
           todo_list_id?: string | null;

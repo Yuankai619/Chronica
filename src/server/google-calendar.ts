@@ -54,7 +54,8 @@ async function getGoogleAccessToken(
 
 interface CalendarEvent {
   id: string;
-  title: string;
+  /** Null for untitled events; every render site has its own fallback. */
+  title: string | null;
   startAt: Date;
   endAt: Date;
 }
@@ -119,7 +120,7 @@ async function fetchWeekEvents(
       if (endAt.getTime() <= startAt.getTime()) continue;
       events.push({
         id: item.id,
-        title: item.summary ?? "(untitled event)",
+        title: item.summary?.trim() || null,
         startAt,
         endAt,
       });
