@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { excludedCategoryIds, sortCategories } from "@/lib/categories";
+import { sortTasksForPicker } from "@/lib/tasks";
 import { ensureCalendarSession } from "@/server/timer";
 import { getOpenTasks } from "@/server/microsoft";
 import { TimerPanel } from "@/components/timer-panel";
@@ -84,8 +85,9 @@ export default async function Home() {
             (categories ?? []).filter((c) => c.archived_at === null),
           )}
           session={session}
-          tasks={tasks}
+          taskSections={tasks ? sortTasksForPicker(tasks, todayKey) : null}
           plannedToday={plannedToday ?? []}
+          todayKey={todayKey}
           calendarEvent={
             activeCalendarItem
               ? {
