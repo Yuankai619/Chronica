@@ -127,3 +127,29 @@ export function sortTasksForPicker(
 export function pickerTasks(sections: PickerSections): TodoTask[] {
   return [...sections.due, ...sections.groups.flatMap((g) => g.tasks)];
 }
+
+/**
+ * Whether a task should still be listed as open. Absence from the open set
+ * only means "completed elsewhere" when that set is known to be complete;
+ * a truncated fetch would otherwise make live tasks vanish.
+ */
+export function looksStillOpen(
+  taskId: string,
+  openIds: Set<string>,
+  truncated: boolean,
+): boolean {
+  return truncated || openIds.has(taskId);
+}
+
+/**
+ * Locally-completed ids that Microsoft reports as open again, so the local
+ * record can be dropped. Microsoft owns the task's state.
+ */
+export function reopenedTaskIds(
+  completedIds: Iterable<string>,
+  openIds: Set<string>,
+  truncated: boolean,
+): string[] {
+  if (truncated) return [];
+  return [...completedIds].filter((id) => openIds.has(id));
+}

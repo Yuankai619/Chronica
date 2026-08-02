@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dueDateKey, sortTasksForPicker, type TodoTask } from "./tasks";
+import {
+  dueDateKey,
+  looksStillOpen,
+  reopenedTaskIds,
+  sortTasksForPicker,
+  type TodoTask,
+} from "./tasks";
 
 function task(
   id: string,
@@ -78,6 +84,38 @@ describe("sortTasksForPicker", () => {
     const input = [d, a, e];
     sortTasksForPicker(input, today);
     expect(input.map((t) => t.id)).toEqual(["D", "A", "E"]);
+  });
+});
+
+describe("looksStillOpen", () => {
+  const openIds = new Set(["open-1"]);
+
+  it("keeps a task Microsoft still reports as open", () => {
+    expect(looksStillOpen("open-1", openIds, false)).toBe(true);
+  });
+
+  it("drops a task missing from a complete open set", () => {
+    expect(looksStillOpen("gone", openIds, false)).toBe(false);
+  });
+
+  it("keeps everything when the open set is truncated", () => {
+    // A throttled list would otherwise look like a batch of completions.
+    expect(looksStillOpen("gone", openIds, true)).toBe(true);
+  });
+});
+
+describe("reopenedTaskIds", () => {
+  it("returns locally-completed ids that are open again", () => {
+    const ids = reopenedTaskIds(["a", "b"], new Set(["b", "c"]), false);
+    expect(ids).toEqual(["b"]);
+  });
+
+  it("returns nothing when the open set is truncated", () => {
+    expect(reopenedTaskIds(["a"], new Set(["a"]), true)).toEqual([]);
+  });
+
+  it("returns nothing when no completed task is open again", () => {
+    expect(reopenedTaskIds(["a"], new Set(["b"]), false)).toEqual([]);
   });
 });
 

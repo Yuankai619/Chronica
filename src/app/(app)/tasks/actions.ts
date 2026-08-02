@@ -40,3 +40,16 @@ export async function completeTask(
   revalidatePath("/");
   return {};
 }
+
+/** Drops the 60-second cache so the next read hits Microsoft again. */
+export async function refreshTasks(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  invalidateTaskCache(user.id);
+  revalidatePath("/tasks");
+  return {};
+}
