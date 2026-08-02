@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/entries";
-import { isUrlTitle, dueDateKey } from "@/lib/tasks";
+import {
+  isUrlTitle,
+  dueDateKey,
+  looksStillOpen,
+  reopenedTaskIds,
+} from "@/lib/tasks";
 import { getOpenTasks } from "@/server/microsoft";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
 import { TaskCompleteCheckbox } from "@/components/task-complete-checkbox";
+import { RefreshTasksButton } from "@/components/refresh-tasks-button";
 import { cn } from "@/lib/utils";
 import { dayKeyInTz, shiftedDayKey, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
@@ -83,6 +89,14 @@ export default async function TasksPage({
   ]);
 
   const completedIds = new Set((completed ?? []).map((c) => c.task_id));
+  const openIds = new Set(allTasks.tasks.map((t) => t.id));
+
+  // Microsoft owns the task's state, so one reopened there comes back here.
+  const reopened = reopenedTaskIds(completedIds, openIds, allTasks.truncated);
+  if (reopened.length > 0) {
+    await supabase.from("completed_tasks").delete().in("task_id", reopened);
+    for (const id of reopened) completedIds.delete(id);
+  }
 
   // Build task-cost map from time entries (existing logic).
   const tasks = new Map<string, TaskCost>();
@@ -125,6 +139,9 @@ export default async function TasksPage({
 
   const rows = [...tasks.values()]
     .filter((t) => !completedIds.has(t.id))
+    // Entry-derived rows come from time_entries, so nothing else would
+    // ever drop one that was ticked off inside Microsoft To Do.
+    .filter((t) => looksStillOpen(t.id, openIds, allTasks.truncated))
     .filter((t) => {
       // In the Open tab: show tasks with time entries OR due today.
       if (showCompleted) return true;
@@ -147,7 +164,7 @@ export default async function TasksPage({
         entries can be checked off — others are read-only.
       </p>
 
-      <div className="mb-6 flex gap-1 border-b border-hairline">
+      <div className="mb-6 flex items-center gap-1 border-b border-hairline">
         {[
           { href: "/tasks", label: "Open", active: !showCompleted },
           {
@@ -169,14 +186,23 @@ export default async function TasksPage({
             {t.label}
           </Link>
         ))}
+        <div className="ml-auto pb-1">
+          <RefreshTasksButton />
+        </div>
       </div>
+
+      {showCompleted ? null : allTasks.truncated ? (
+        <p className="mb-4 text-sm text-muted">
+          Completion status may be out of date — Microsoft data is incomplete.
+        </p>
+      ) : null}
 
       {showCompleted ? (
         (completed ?? []).length === 0 ? (
           <Card>
             <p className="text-sm text-muted">
-              Nothing completed today. Completed tasks clear automatically after
-              the day ends.
+              Nothing completed here today. Completed tasks clear automatically
+              after the day ends.
             </p>
           </Card>
         ) : (
