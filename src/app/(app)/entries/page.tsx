@@ -2,16 +2,28 @@ import { createClient } from "@/lib/supabase/server";
 import { sortCategories } from "@/lib/categories";
 import { EntriesManager } from "@/components/entries-manager";
 import { getOpenTasks } from "@/server/microsoft";
+import { getUserTimeZone } from "@/server/tz";
+import { PrototypeSwitcher } from "@/components/prototype-switcher";
+import { VARIANTS, VARIANT_LABELS } from "@/components/entry-row-prototype";
 
 export const metadata = { title: "Entries — Chronica" };
 
 const DAYS_SHOWN = 14;
 
-export default async function EntriesPage() {
+// PROTOTYPE (#63): three entry-row layouts on this route, switchable via
+// `?variant=A|B|C`. Remove the switcher and the variants once one wins.
+export default async function EntriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ variant?: string }>;
+}) {
+  const { variant } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const timeZone = await getUserTimeZone();
 
   const since = new Date();
   since.setDate(since.getDate() - DAYS_SHOWN);
@@ -44,7 +56,10 @@ export default async function EntriesPage() {
         categories={sortCategories(categories ?? [])}
         entries={entries ?? []}
         tasks={tasks}
+        variant={variant && VARIANTS.includes(variant as "A") ? variant : "A"}
+        timeZone={timeZone}
       />
+      <PrototypeSwitcher variants={[...VARIANTS]} labels={VARIANT_LABELS} />
     </main>
   );
 }

@@ -22,6 +22,7 @@ import type { TodoTask } from "@/lib/tasks";
 type TaskPickerTasks = TodoTask[] | null | undefined;
 import { TaskPicker } from "@/components/task-picker";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { EntryRowVariant } from "@/components/entry-row-prototype";
 
 function toLocalInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -150,10 +151,15 @@ function EntryRow({
   entry,
   categories,
   tasks,
+  variant,
+  timeZone,
 }: {
   entry: TimeEntry;
   categories: Category[];
   tasks: TaskPickerTasks;
+  // PROTOTYPE (#63) — layout variant; drop with the variant components.
+  variant?: string;
+  timeZone: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -171,6 +177,67 @@ function EntryRow({
           onDone={() => setEditing(false)}
         />
       </li>
+    );
+  }
+
+  const actions = (
+    <>
+      {entry.needs_confirmation ? (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await confirmEntry(entry.id);
+            })
+          }
+        >
+          Confirm
+        </Button>
+      ) : null}
+      <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+        Edit
+      </Button>
+      <Button
+        variant="danger"
+        size="sm"
+        disabled={pending}
+        onClick={() =>
+          confirm.request(() =>
+            startTransition(async () => {
+              await deleteEntry(entry.id);
+            }),
+          )
+        }
+      >
+        Delete
+      </Button>
+    </>
+  );
+
+  const dialog = (
+    <ConfirmDialog
+      open={confirm.open}
+      title="Delete this entry?"
+      description="The recorded time is removed from all statistics."
+      onConfirm={confirm.confirm}
+      onCancel={confirm.cancel}
+    />
+  );
+
+  if (variant) {
+    return (
+      <>
+        <EntryRowVariant
+          variant={variant}
+          entry={entry}
+          category={category}
+          timeZone={timeZone}
+          actions={actions}
+        />
+        {dialog}
+      </>
     );
   }
 
@@ -202,46 +269,8 @@ function EntryRow({
           <span className="text-sm text-muted">{entry.note}</span>
         ) : null}
       </div>
-      <div className="flex shrink-0 gap-1">
-        {entry.needs_confirmation ? (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                await confirmEntry(entry.id);
-              })
-            }
-          >
-            Confirm
-          </Button>
-        ) : null}
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-          Edit
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          disabled={pending}
-          onClick={() =>
-            confirm.request(() =>
-              startTransition(async () => {
-                await deleteEntry(entry.id);
-              }),
-            )
-          }
-        >
-          Delete
-        </Button>
-      </div>
-      <ConfirmDialog
-        open={confirm.open}
-        title="Delete this entry?"
-        description="The recorded time is removed from all statistics."
-        onConfirm={confirm.confirm}
-        onCancel={confirm.cancel}
-      />
+      <div className="flex shrink-0 gap-1">{actions}</div>
+      {dialog}
     </li>
   );
 }
@@ -250,10 +279,15 @@ export function EntriesManager({
   categories,
   entries,
   tasks,
+  variant,
+  timeZone,
 }: {
   categories: Category[];
   entries: TimeEntry[];
   tasks: TodoTask[] | null;
+  // PROTOTYPE (#63) — layout variant; drop with the variant components.
+  variant?: string;
+  timeZone: string;
 }) {
   const activeCategories = categories.filter((c) => c.archived_at === null);
   const days = groupEntriesByDay(entries);
@@ -286,6 +320,8 @@ export function EntriesManager({
                   entry={entry}
                   categories={categories}
                   tasks={tasks}
+                  variant={variant}
+                  timeZone={timeZone}
                 />
               ))}
             </ul>
