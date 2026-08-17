@@ -165,17 +165,38 @@ export async function syncCalendarWeek(
 
   const firstDay = dayKeyInTz(weekStart, timeZone);
   const lastDay = dayKeyInTz(new Date(weekEnd.getTime() - 1), timeZone);
-  const { data: existing, error: readError } = await supabase
+  const fetchedIds = events.map((event) => event.id);
+
+  // Rows already on this week's board (used to detect events removed from
+  // the calendar).
+  const { data: weekExisting, error: weekReadError } = await supabase
     .from("planned_items")
     .select("*")
     .eq("user_id", userId)
     .not("gcal_event_id", "is", null)
     .gte("day", firstDay)
     .lte("day", lastDay);
-  if (readError) return { error: readError.message };
+  if (weekReadError) return { error: weekReadError.message };
+
+  // Rows for the fetched events regardless of which day they currently sit
+  // on — an event rescheduled across a week boundary keeps its Google id,
+  // so `planned_items_gcal_event_idx` (user_id, gcal_event_id) can already
+  // be taken by a stale row parked under its old week.
+  const { data: matchingExisting, error: matchReadError } =
+    fetchedIds.length > 0
+      ? await supabase
+          .from("planned_items")
+          .select("*")
+          .eq("user_id", userId)
+          .in("gcal_event_id", fetchedIds)
+      : { data: [] as typeof weekExisting, error: null };
+  if (matchReadError) return { error: matchReadError.message };
 
   const existingByEvent = new Map(
-    (existing ?? []).map((item) => [item.gcal_event_id!, item]),
+    [...(weekExisting ?? []), ...(matchingExisting ?? [])].map((item) => [
+      item.gcal_event_id!,
+      item,
+    ]),
   );
   const seenIds = new Set<string>();
   let added = 0;
@@ -252,7 +273,7 @@ export async function syncCalendarWeek(
     updated += 1;
   }
 
-  const removedIds = (existing ?? [])
+  const removedIds = (weekExisting ?? [])
     .filter((item) => !seenIds.has(item.gcal_event_id!))
     .map((item) => item.id);
   if (removedIds.length > 0) {
