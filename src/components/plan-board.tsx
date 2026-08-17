@@ -190,6 +190,7 @@ function ItemCard({
               value={item.category_id ?? ""}
               disabled={assigning}
               onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
               onChange={(event) => {
                 const value = event.target.value;
                 startAssign(async () => {
