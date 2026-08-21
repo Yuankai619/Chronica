@@ -10,6 +10,7 @@ import {
   CheckSquare,
   BarChart3,
   Tags,
+  Bot,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const NAV_LINKS = [
   { href: "/planning", label: "Planning", icon: ClipboardList },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/summary", label: "Summary", icon: BarChart3 },
+  { href: "/agent", label: "Agent", icon: Bot },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
