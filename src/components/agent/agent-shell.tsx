@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat, type UseChatHelpers } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  type UIMessage,
+} from "ai";
 import { Bot, Brain, Loader2, Menu, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConversationList } from "@/components/agent/conversation-list";
@@ -28,9 +32,11 @@ function conversationIdFromMessages(messages: UIMessage[]): string | null {
 function ChatMessage({
   message,
   onOpenMemory,
+  onRespondApproval,
 }: {
   message: UIMessage;
   onOpenMemory?: () => void;
+  onRespondApproval?: (approvalId: string, approved: boolean) => void;
 }) {
   const isUser = message.role === "user";
   return (
@@ -53,7 +59,11 @@ function ChatMessage({
           isUser ? "bg-panel" : "bg-panel/40",
         )}
       >
-        <MessageParts message={message} onOpenMemory={onOpenMemory} />
+        <MessageParts
+          message={message}
+          onOpenMemory={onOpenMemory}
+          onRespondApproval={onRespondApproval}
+        />
       </div>
     </div>
   );
@@ -86,6 +96,9 @@ export function AgentShell({
     id: initialConversationId ?? undefined,
     messages: initialMessages?.items ?? [],
     generateId: () => crypto.randomUUID(),
+    // Approve/reject a plan resubmits automatically instead of needing
+    // another Enter press.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport: new DefaultChatTransport({
       api: "/api/agent/chat",
       prepareSendMessagesRequest: ({ messages: allMessages }) => ({
@@ -204,6 +217,9 @@ export function AgentShell({
                 key={m.id}
                 message={m}
                 onOpenMemory={() => setMemoryOpen(true)}
+                onRespondApproval={(approvalId, approved) =>
+                  chat.addToolApprovalResponse({ id: approvalId, approved })
+                }
               />
             ))
           )}

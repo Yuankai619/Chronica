@@ -73,6 +73,13 @@ export async function ownsConversation(
   return data !== null;
 }
 
+/**
+ * Upsert, not insert: a tool-approval response resubmits the same
+ * assistant message id with its approval part filled in, and once the
+ * model resumes, onEnd's responseMessage extends that same id again (a
+ * "continuation") rather than starting a new one. Both cases must land on
+ * the same row instead of colliding with a duplicate-key error.
+ */
 export async function saveMessage(
   supabase: Client,
   conversationId: string,
@@ -80,11 +87,14 @@ export async function saveMessage(
   message: UIMessage,
 ): Promise<void> {
   const row = toStoredRow(message);
-  await supabase.from("agent_messages").insert({
-    id: row.id,
-    conversation_id: conversationId,
-    user_id: userId,
-    role: row.role,
-    parts: row.parts,
-  });
+  await supabase.from("agent_messages").upsert(
+    {
+      id: row.id,
+      conversation_id: conversationId,
+      user_id: userId,
+      role: row.role,
+      parts: row.parts,
+    },
+    { onConflict: "id" },
+  );
 }

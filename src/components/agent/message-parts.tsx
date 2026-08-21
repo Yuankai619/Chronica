@@ -2,11 +2,93 @@
 
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { cn } from "@/lib/utils";
-import { Brain, Loader2, Wrench } from "lucide-react";
+import { Brain, Calendar, Check, Loader2, Wrench, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type ToolPart = ReturnType<typeof extractToolPart>;
 
 const MEMORY_TOOL_NAMES = new Set(["upsertMemory", "deleteMemory"]);
+
+interface PlanItem {
+  day: string;
+  categoryId: string;
+  expectedMinutes: number;
+  title?: string;
+}
+
+function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function PlanApprovalCard({
+  part,
+  onRespond,
+}: {
+  part: NonNullable<ToolPart>;
+  onRespond?: (approved: boolean) => void;
+}) {
+  const input = part.input as
+    { weekStart?: string; items?: PlanItem[] } | undefined;
+  const items = input?.items ?? [];
+  const responded =
+    part.state === "approval-responded" || part.state === "output-available";
+  const approved =
+    part.state === "approval-responded" ? part.approval.approved : undefined;
+
+  return (
+    <div className="my-1 rounded-md border border-accent/30 bg-accent/5 p-3 text-xs">
+      <div className="mb-2 flex items-center gap-2 text-foreground/80">
+        <Calendar className="size-3.5 shrink-0 text-accent" aria-hidden />
+        <span>
+          Proposed plan for week of{" "}
+          <span className="font-mono">{input?.weekStart}</span>
+        </span>
+      </div>
+      <div className="space-y-1">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 rounded bg-panel/60 px-2 py-1"
+          >
+            <span className="font-mono text-muted">{item.day}</span>
+            <span className="truncate text-foreground/90">
+              {item.title ?? item.categoryId}
+            </span>
+            <span className="ml-auto shrink-0 font-mono tabular-nums text-muted">
+              {formatMinutes(item.expectedMinutes)}
+            </span>
+          </div>
+        ))}
+      </div>
+      {part.state === "approval-requested" && onRespond ? (
+        <div className="mt-3 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onRespond(false)}>
+            <X className="size-3.5" aria-hidden />
+            Reject
+          </Button>
+          <Button size="sm" onClick={() => onRespond(true)}>
+            <Check className="size-3.5" aria-hidden />
+            Add to Planning
+          </Button>
+        </div>
+      ) : null}
+      {responded ? (
+        <p
+          className={cn(
+            "mt-2 font-mono text-[0.65rem] uppercase",
+            approved === false ? "text-danger" : "text-accent",
+          )}
+        >
+          {approved === false ? "Rejected" : "Added to your Planning board"}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function MemoryCard({
   part,
@@ -104,9 +186,11 @@ function extractToolPart(part: UIMessage["parts"][number]) {
 export function MessageParts({
   message,
   onOpenMemory,
+  onRespondApproval,
 }: {
   message: UIMessage;
   onOpenMemory?: () => void;
+  onRespondApproval?: (approvalId: string, approved: boolean) => void;
 }) {
   return (
     <>
@@ -123,6 +207,21 @@ export function MessageParts({
         }
         const toolPart = extractToolPart(part);
         if (!toolPart) return null;
+        if (toolPart.name === "writeWeekPlan") {
+          const approvalId =
+            "approval" in toolPart ? toolPart.approval?.id : undefined;
+          return (
+            <PlanApprovalCard
+              key={i}
+              part={toolPart}
+              onRespond={
+                approvalId && onRespondApproval
+                  ? (approved) => onRespondApproval(approvalId, approved)
+                  : undefined
+              }
+            />
+          );
+        }
         if (MEMORY_TOOL_NAMES.has(toolPart.name)) {
           return (
             <MemoryCard key={i} part={toolPart} onOpenMemory={onOpenMemory} />
