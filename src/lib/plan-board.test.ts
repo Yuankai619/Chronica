@@ -46,6 +46,7 @@ function item(
     start_at: null,
     end_at: null,
     auto_timer_done: false,
+    is_all_day: false,
     created_at: "",
   };
 }

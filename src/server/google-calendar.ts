@@ -2,10 +2,15 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import {
+  eventDaySegments,
+  type CalendarEventInput,
+} from "@/lib/calendar-events";
 import { dayKeyInTz } from "@/lib/tz";
 import { googleExpiresAt, refreshGoogleTokens } from "@/server/google-oauth";
 
 type Client = SupabaseClient<Database>;
+type PlannedItemRow = Database["public"]["Tables"]["planned_items"]["Row"];
 
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
@@ -52,13 +57,8 @@ async function getGoogleAccessToken(
   return refreshed.access_token;
 }
 
-interface CalendarEvent {
-  id: string;
-  /** Null for untitled events; every render site has its own fallback. */
-  title: string | null;
-  startAt: Date;
-  endAt: Date;
-}
+/** Null title for untitled events; every render site has its own fallback. */
+type CalendarEvent = CalendarEventInput;
 
 type FetchResult =
   | { events: CalendarEvent[]; error?: never }
@@ -104,25 +104,47 @@ async function fetchWeekEvents(
         id: string;
         summary?: string;
         status?: string;
-        start?: { dateTime?: string };
-        end?: { dateTime?: string };
+        start?: { dateTime?: string; date?: string };
+        end?: { dateTime?: string; date?: string };
       }[];
     };
 
     const events: CalendarEvent[] = [];
     for (const item of data.items ?? []) {
       if (item.status === "cancelled") continue;
-      // All-day events have start.date instead of dateTime — skipped, as
-      // they carry no meaningful duration for time planning.
+      const title = item.summary?.trim() || null;
+
+      // All-day events carry a date-only `date` field instead of
+      // `dateTime`. It's a literal calendar date, not an instant, so it's
+      // kept as a string and never run through timezone conversion.
+      // `end.date` is exclusive (a single-day event still has end = start
+      // + 1 day).
+      if (item.start?.date && item.end?.date) {
+        if (item.end.date <= item.start.date) continue;
+        events.push({
+          id: item.id,
+          title,
+          isAllDay: true,
+          startAt: null,
+          endAt: null,
+          startDateKey: item.start.date,
+          endDateKeyExclusive: item.end.date,
+        });
+        continue;
+      }
+
       if (!item.start?.dateTime || !item.end?.dateTime) continue;
       const startAt = new Date(item.start.dateTime);
       const endAt = new Date(item.end.dateTime);
       if (endAt.getTime() <= startAt.getTime()) continue;
       events.push({
         id: item.id,
-        title: item.summary?.trim() || null,
+        title,
+        isAllDay: false,
         startAt,
         endAt,
+        startDateKey: null,
+        endDateKeyExclusive: null,
       });
     }
     return { events };
@@ -143,6 +165,8 @@ export interface SyncResult {
  * Unchanged events are left alone (preserving manual order); changed
  * events keep their manually assigned category but take the calendar's
  * latest day/time/duration; events deleted from the calendar are removed.
+ * All-day and multi-day events materialize one row per calendar day they
+ * span within the synced week.
  */
 export async function syncCalendarWeek(
   supabase: Client,
@@ -192,13 +216,24 @@ export async function syncCalendarWeek(
       : { data: [] as typeof weekExisting, error: null };
   if (matchReadError) return { error: matchReadError.message };
 
-  const existingByEvent = new Map(
-    [...(weekExisting ?? []), ...(matchingExisting ?? [])].map((item) => [
-      item.gcal_event_id!,
-      item,
-    ]),
-  );
-  const seenIds = new Set<string>();
+  // All known rows per event id, deduped by row id and day-ordered, so an
+  // event's segments can be paired with its existing rows positionally —
+  // a reschedule (or an all-day/multi-day event that now spans a
+  // different number of days) updates rows in place by index rather than
+  // by day, keeping the first day's manually assigned category on a
+  // simple reschedule.
+  const rowsByEvent = new Map<string, PlannedItemRow[]>();
+  for (const row of [...(weekExisting ?? []), ...(matchingExisting ?? [])]) {
+    const list = rowsByEvent.get(row.gcal_event_id!) ?? [];
+    if (!list.some((r) => r.id === row.id)) list.push(row);
+    rowsByEvent.set(row.gcal_event_id!, list);
+  }
+  for (const list of rowsByEvent.values()) {
+    list.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  }
+
+  const seenEventIds = new Set<string>();
+  const staleRowIds: string[] = [];
   let added = 0;
   let updated = 0;
 
@@ -223,59 +258,75 @@ export async function syncCalendarWeek(
   // Events arrive ordered by start time, so same-day inserts naturally
   // land earliest-first.
   for (const event of events) {
-    seenIds.add(event.id);
-    const day = dayKeyInTz(event.startAt, timeZone);
-    const expectedMinutes = Math.max(
-      1,
-      Math.round((event.endAt.getTime() - event.startAt.getTime()) / 60_000),
-    );
-    const current = existingByEvent.get(event.id);
+    seenEventIds.add(event.id);
+    const segments = eventDaySegments(event, timeZone, firstDay, lastDay);
+    const oldRows = rowsByEvent.get(event.id) ?? [];
 
-    if (!current) {
-      const { error } = await supabase.from("planned_items").insert({
-        user_id: userId,
-        day,
-        category_id: null,
-        expected_minutes: expectedMinutes,
-        position: await nextPosition(day),
-        gcal_event_id: event.id,
-        title: event.title,
-        start_at: event.startAt.toISOString(),
-        end_at: event.endAt.toISOString(),
-      });
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const current = oldRows[i];
+
+      if (!current) {
+        const { error } = await supabase.from("planned_items").insert({
+          user_id: userId,
+          day: segment.day,
+          category_id: null,
+          expected_minutes: segment.expectedMinutes,
+          position: await nextPosition(segment.day),
+          gcal_event_id: event.id,
+          title: event.title,
+          start_at: segment.startAt,
+          end_at: segment.endAt,
+          is_all_day: segment.isAllDay,
+        });
+        if (error) return { error: error.message };
+        added += 1;
+        continue;
+      }
+
+      const unchanged =
+        current.day === segment.day &&
+        current.start_at === segment.startAt &&
+        current.end_at === segment.endAt &&
+        current.title === event.title &&
+        current.is_all_day === segment.isAllDay;
+      if (unchanged) continue;
+
+      // Keep category (and position when staying on the same day); the
+      // calendar wins on day, time, and duration.
+      const { error } = await supabase
+        .from("planned_items")
+        .update({
+          day: segment.day,
+          expected_minutes: segment.expectedMinutes,
+          title: event.title,
+          start_at: segment.startAt,
+          end_at: segment.endAt,
+          is_all_day: segment.isAllDay,
+          position:
+            current.day === segment.day
+              ? current.position
+              : await nextPosition(segment.day),
+        })
+        .eq("id", current.id);
       if (error) return { error: error.message };
-      added += 1;
-      continue;
+      updated += 1;
     }
 
-    const unchanged =
-      current.day === day &&
-      current.start_at === event.startAt.toISOString() &&
-      current.end_at === event.endAt.toISOString() &&
-      current.title === event.title;
-    if (unchanged) continue;
-
-    // Keep category (and position when staying on the same day); the
-    // calendar wins on day, time, and duration.
-    const { error } = await supabase
-      .from("planned_items")
-      .update({
-        day,
-        expected_minutes: expectedMinutes,
-        title: event.title,
-        start_at: event.startAt.toISOString(),
-        end_at: event.endAt.toISOString(),
-        position:
-          current.day === day ? current.position : await nextPosition(day),
-      })
-      .eq("id", current.id);
-    if (error) return { error: error.message };
-    updated += 1;
+    // The event now spans fewer days than it used to — drop the leftover
+    // rows (e.g. a multi-day event shortened, or an event switched from
+    // all-day/multi-day to a single timed slot).
+    for (let i = segments.length; i < oldRows.length; i++) {
+      staleRowIds.push(oldRows[i].id);
+    }
   }
 
-  const removedIds = (weekExisting ?? [])
-    .filter((item) => !seenIds.has(item.gcal_event_id!))
-    .map((item) => item.id);
+  const removedIds = [
+    ...(weekExisting ?? [])
+      .filter((item) => !seenEventIds.has(item.gcal_event_id!))
+      .map((item) => item.id),
+    ...staleRowIds,
+  ];
   if (removedIds.length > 0) {
     const { error } = await supabase
       .from("planned_items")
