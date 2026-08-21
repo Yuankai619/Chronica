@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#
+# Auto-unlock git-crypt after switching branches inside a worktree.
+#
+# git passes: <prev-HEAD> <new-HEAD> <is-branch-checkout: 0|1>. Only act on
+# actual branch checkouts (1) — a single-file `git checkout -- path` also
+# triggers this hook with 0, and re-running the unlock logic there is
+# wasted work.
+#
+# This only covers branch switches. It cannot cover `git worktree add`:
+# that command's own implicit checkout is what fails in an unlocked-elsewhere
+# repo (see scripts/git-crypt-worktree-unlock.sh for why), and a failed
+# checkout means `worktree add` aborts before this hook would ever run. Use
+# `pnpm worktree:add` for that instead of raw `git worktree add`.
+
+flag="${3:-}"
+[ "$flag" = "1" ] || exit 0
+
+script="$(git rev-parse --show-toplevel)/scripts/git-crypt-worktree-unlock.sh"
+[ -x "$script" ] || exit 0
+
+# Never let this block or fail a checkout that already happened.
+"$script" || true
+exit 0

@@ -5,6 +5,8 @@
   "packageManager": "pnpm@11.2.2",
   "scripts": {
     "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && git config core.hooksPath .githooks || true",
+    "worktree:add": "bash scripts/git-worktree-add.sh",
+    "worktree:unlock": "bash scripts/git-crypt-worktree-unlock.sh",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
