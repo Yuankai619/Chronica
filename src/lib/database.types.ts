@@ -121,6 +121,7 @@ export interface Database {
           start_at: string | null;
           end_at: string | null;
           auto_timer_done: boolean;
+          is_all_day: boolean;
           created_at: string;
         };
         Insert: {
@@ -135,6 +136,7 @@ export interface Database {
           start_at?: string | null;
           end_at?: string | null;
           auto_timer_done?: boolean;
+          is_all_day?: boolean;
           created_at?: string;
         };
         Update: {
@@ -149,6 +151,7 @@ export interface Database {
           start_at?: string | null;
           end_at?: string | null;
           auto_timer_done?: boolean;
+          is_all_day?: boolean;
           created_at?: string;
         };
         Relationships: [];

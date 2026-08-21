@@ -374,7 +374,11 @@ function CalendarToday({
                   ) : (
                     <span className="text-xs text-muted">No category</span>
                   )}
-                  {item.start_at && item.end_at ? (
+                  {item.is_all_day ? (
+                    <span className="font-mono text-xs tracking-[0.06em] text-muted uppercase">
+                      All day
+                    </span>
+                  ) : item.start_at && item.end_at ? (
                     <span className="font-mono text-xs text-muted tabular-nums">
                       {timeInTz(new Date(item.start_at), timeZone)}–
                       {timeInTz(new Date(item.end_at), timeZone)}
@@ -382,9 +386,11 @@ function CalendarToday({
                   ) : null}
                 </span>
               </div>
-              <span className="shrink-0 font-mono text-sm text-[#7cc0f5] tabular-nums">
-                {formatDuration(item.expected_minutes)}
-              </span>
+              {!item.is_all_day ? (
+                <span className="shrink-0 font-mono text-sm text-[#7cc0f5] tabular-nums">
+                  {formatDuration(item.expected_minutes)}
+                </span>
+              ) : null}
             </div>
           );
         })}
