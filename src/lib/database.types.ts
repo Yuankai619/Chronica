@@ -60,30 +60,6 @@ export interface Database {
         };
         Relationships: [];
       };
-      retros: {
-        Row: {
-          id: string;
-          user_id: string;
-          week_start: string;
-          content: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          week_start: string;
-          content: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          week_start?: string;
-          content?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
       ai_memories: {
         Row: {
           id: string;
