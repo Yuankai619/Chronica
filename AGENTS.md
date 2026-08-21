@@ -43,6 +43,27 @@ A `pre-commit` hook in [.githooks/](.githooks/) blocks any commit that stages
 `.env` as plaintext; if it fires, the filter is broken — fix it, don't
 `--no-verify`.
 
+### Worktrees
+
+Linked worktrees (`git worktree add`) don't inherit the unlocked state:
+git-crypt's filter is registered repo-wide the moment any worktree has ever
+been unlocked, but the decrypted key lives at a path private to each
+worktree — so a new worktree hits the filter immediately with no key behind
+it, and the resulting broken checkout leaves `git-crypt unlock` refusing to
+run ("working directory not clean"). Always create worktrees through:
+
+```bash
+pnpm worktree:add ../my-feature some-branch   # not `git worktree add`
+```
+
+This checks out without the filter first, borrows the already-unlocked key
+from this checkout, then checks out for real. `.githooks/post-checkout`
+does the same repair automatically on ordinary branch switches inside a
+worktree. If a worktree still ends up locked, `pnpm worktree:unlock` fixes
+it in place. None of this substitutes for the real `git-crypt unlock` the
+very first time this repo is unlocked anywhere — that one still needs the
+GPG passphrase.
+
 ## Project Layout
 
 - `src/app/(app)/` — authenticated pages (timer, entries, week, planning,
