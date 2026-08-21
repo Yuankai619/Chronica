@@ -25,7 +25,13 @@ function conversationIdFromMessages(messages: UIMessage[]): string | null {
   return null;
 }
 
-function ChatMessage({ message }: { message: UIMessage }) {
+function ChatMessage({
+  message,
+  onOpenMemory,
+}: {
+  message: UIMessage;
+  onOpenMemory?: () => void;
+}) {
   const isUser = message.role === "user";
   return (
     <div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
@@ -47,7 +53,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
           isUser ? "bg-panel" : "bg-panel/40",
         )}
       >
-        <MessageParts message={message} />
+        <MessageParts message={message} onOpenMemory={onOpenMemory} />
       </div>
     </div>
   );
@@ -193,7 +199,13 @@ export function AgentShell({
               </p>
             </div>
           ) : (
-            chat.messages.map((m) => <ChatMessage key={m.id} message={m} />)
+            chat.messages.map((m) => (
+              <ChatMessage
+                key={m.id}
+                message={m}
+                onOpenMemory={() => setMemoryOpen(true)}
+              />
+            ))
           )}
         </div>
 

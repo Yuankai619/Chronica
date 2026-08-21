@@ -1,7 +1,16 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import {
+  deleteMemoryAction,
+  updateMemoryContentAction,
+} from "@/app/(app)/agent/actions";
 import type { MemoryRow } from "@/server/agent/memories";
 
 const KIND_LABEL: Record<MemoryRow["kind"], string> = {
@@ -11,15 +20,128 @@ const KIND_LABEL: Record<MemoryRow["kind"], string> = {
   constraint: "Constraint",
 };
 
+function MemoryItem({
+  memory,
+  onChanged,
+  onDeleted,
+}: {
+  memory: MemoryRow;
+  onChanged: (content: string) => void;
+  onDeleted: () => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(memory.content);
+  const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
+
+  async function save() {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === memory.content) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    await updateMemoryContentAction(
+      memory.id,
+      memory.kind,
+      trimmed,
+      memory.categoryId,
+    );
+    onChanged(trimmed);
+    setSaving(false);
+    setEditing(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-md border border-hairline bg-panel/40 p-3">
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="microlabel">{KIND_LABEL[memory.kind]}</span>
+        <div className="ml-auto h-1 w-16 overflow-hidden rounded-full bg-hairline">
+          <div
+            className={cn(
+              "h-full rounded-full bg-accent",
+              memory.displayConfidence < 0.4 && "bg-muted",
+            )}
+            style={{ width: `${Math.round(memory.displayConfidence * 100)}%` }}
+          />
+        </div>
+        <button
+          type="button"
+          aria-label="Edit"
+          onClick={() => setEditing((v) => !v)}
+          className="cursor-pointer rounded p-1 text-muted hover:text-foreground"
+        >
+          <Pencil className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          aria-label="Delete"
+          onClick={() =>
+            confirm.request(async () => {
+              await deleteMemoryAction(memory.id);
+              onDeleted();
+              router.refresh();
+            })
+          }
+          className="cursor-pointer rounded p-1 text-muted hover:text-danger"
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+            className="text-sm"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDraft(memory.content);
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" disabled={saving} onClick={save}>
+              Save
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-foreground/90">{memory.content}</p>
+      )}
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Delete this memory?"
+        description="The agent won't recall this observation in future conversations."
+        onConfirm={confirm.confirm}
+        onCancel={confirm.cancel}
+      />
+    </div>
+  );
+}
+
 export function MemoryDrawer({
   open,
-  memories,
+  memories: initialMemories,
   onClose,
 }: {
   open: boolean;
   memories: MemoryRow[];
   onClose: () => void;
 }) {
+  const [memories, setMemories] = useState(initialMemories);
+
   if (!open) return null;
 
   return (
@@ -59,24 +181,20 @@ export function MemoryDrawer({
             </p>
           ) : (
             memories.map((m) => (
-              <div
+              <MemoryItem
                 key={m.id}
-                className="rounded-md border border-hairline bg-panel/40 p-3"
-              >
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="microlabel">{KIND_LABEL[m.kind]}</span>
-                  <div className="ml-auto h-1 w-16 overflow-hidden rounded-full bg-hairline">
-                    <div
-                      className={cn(
-                        "h-full rounded-full bg-accent",
-                        m.confidence < 0.4 && "bg-muted",
-                      )}
-                      style={{ width: `${Math.round(m.confidence * 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-foreground/90">{m.content}</p>
-              </div>
+                memory={m}
+                onChanged={(content) =>
+                  setMemories((prev) =>
+                    prev.map((row) =>
+                      row.id === m.id ? { ...row, content } : row,
+                    ),
+                  )
+                }
+                onDeleted={() =>
+                  setMemories((prev) => prev.filter((row) => row.id !== m.id))
+                }
+              />
             ))
           )}
         </div>
