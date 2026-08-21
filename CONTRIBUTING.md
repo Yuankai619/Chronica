@@ -32,6 +32,9 @@ PR titles must follow [Conventional Commits](https://www.conventionalcommits.org
 Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`,
 `perf`, `style`, `build`, `revert`.
 
+Titles are written in **English** (the description body is Chinese — see
+[Description](#description) below).
+
 Examples:
 
 - `feat(timer): auto-stop sessions at the hard duration cap`
@@ -51,8 +54,9 @@ convention (not enforced by CI) — keep PRs reviewable.
 
 ### Description
 
-No required format for now. Including a short summary and "Stacked on #N"
-notes for stacked PRs is appreciated.
+Written in **Chinese** (繁體中文). No required structure for now — a short
+summary of what changed and why, plus "Stacked on #N" notes for stacked
+PRs, is appreciated.
 
 ## Branch Naming
 

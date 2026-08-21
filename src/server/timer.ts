@@ -100,19 +100,105 @@ export async function getReconciledSession(
 }
 
 /**
+ * How far back a missed calendar window is still recorded. Bounds the
+ * damage of a first sync (or a long absence) pulling in old events.
+ */
+export const BACKFILL_LOOKBACK_DAYS = 7;
+
+/**
+ * Records calendar windows that already ended but never ran as a session —
+ * the browser was closed for the whole window, so no session was ever
+ * started. Without this, an event is only timed when the app happened to
+ * be open during it.
+ *
+ * Claims each item by flipping `auto_timer_done` first (a conditional
+ * update is atomic), so concurrent renders cannot double-insert.
+ */
+export async function backfillCalendarEntries(
+  supabase: Client,
+  userId: string,
+  now: Date,
+  skipPlannedItemId?: string | null,
+): Promise<void> {
+  const lookbackIso = new Date(
+    now.getTime() - BACKFILL_LOOKBACK_DAYS * 24 * 60 * 60_000,
+  ).toISOString();
+
+  const { data: missed } = await supabase
+    .from("planned_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("auto_timer_done", false)
+    .not("gcal_event_id", "is", null)
+    .not("category_id", "is", null)
+    .lte("end_at", now.toISOString())
+    .gte("end_at", lookbackIso)
+    .order("start_at", { ascending: true });
+
+  for (const item of missed ?? []) {
+    if (!item.category_id || !item.start_at || !item.end_at) continue;
+    // The running session owns this item; its own stop path records it.
+    if (item.id === skipPlannedItemId) continue;
+
+    const { data: claimed } = await supabase
+      .from("planned_items")
+      .update({ auto_timer_done: true })
+      .eq("id", item.id)
+      .eq("auto_timer_done", false)
+      .select("id");
+    if (!claimed || claimed.length === 0) continue; // already claimed
+
+    const { error: insertError } = await supabase.from("time_entries").insert({
+      user_id: userId,
+      category_id: item.category_id,
+      started_at: item.start_at,
+      duration_minutes: windowMinutes(item.start_at, item.end_at),
+      source: "timer",
+      note: item.title,
+      needs_confirmation: false,
+    });
+    if (insertError) {
+      // Release the claim so the next render can retry.
+      await supabase
+        .from("planned_items")
+        .update({ auto_timer_done: false })
+        .eq("id", item.id);
+    }
+  }
+}
+
+/** Whole minutes covered by a calendar window (at least 1). */
+function windowMinutes(startAt: string, endAt: string): number {
+  return Math.max(
+    1,
+    Math.round((Date.parse(endAt) - Date.parse(startAt)) / 60_000),
+  );
+}
+
+/**
  * Auto-starts a locked timer session for a calendar item whose window is
- * live (category assigned, not yet run). A running manual session is
- * stopped and saved first; an already-running calendar session wins.
- * Returns the current session after reconciliation.
+ * live (category assigned, not yet run), and records any already-ended
+ * windows that were missed while the app was closed. A running manual
+ * session is stopped and saved first; an already-running calendar session
+ * wins. Returns the current session after reconciliation.
  */
 export async function ensureCalendarSession(
   supabase: Client,
   userId: string,
 ): Promise<TimerSession | null> {
   const session = await getReconciledSession(supabase, userId);
+
+  const now = new Date();
+  await backfillCalendarEntries(
+    supabase,
+    userId,
+    now,
+    session?.planned_item_id,
+  );
+
   if (session?.planned_item_id) return session;
 
-  const nowIso = new Date().toISOString();
+  const nowIso = now.toISOString();
   const { data: dueItem } = await supabase
     .from("planned_items")
     .select("*")
@@ -139,12 +225,7 @@ export async function ensureCalendarSession(
     if (saved.error) return session;
   }
 
-  const durationMinutes = Math.max(
-    1,
-    Math.round(
-      (Date.parse(dueItem.end_at) - Date.parse(dueItem.start_at)) / 60_000,
-    ),
-  );
+  const durationMinutes = windowMinutes(dueItem.start_at, dueItem.end_at);
 
   // Cap = event duration, so the standard reconciliation ends the session
   // exactly at the window bound even if the browser is closed.

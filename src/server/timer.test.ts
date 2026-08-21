@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import type { TimerSession } from "./timer";
-import { saveAndClearSession } from "./timer";
+import { backfillCalendarEntries, saveAndClearSession } from "./timer";
 
 /**
  * Creates a mock Supabase client that tracks inserts and deletes,
@@ -199,5 +199,201 @@ describe("saveAndClearSession", () => {
     expect(
       mock.plannedItemUpdates.filter((id) => id === "plan-99"),
     ).toHaveLength(1);
+  });
+});
+
+/**
+ * Mock Supabase for the backfill path: an in-memory planned_items table
+ * supporting the filter chain plus conditional (claiming) updates.
+ */
+function createBackfillMock(items: Record<string, unknown>[]) {
+  const rows = items.map((item) => ({ ...item }));
+  const inserts: Array<Record<string, unknown>> = [];
+  let insertFails = false;
+
+  function plannedItemsBuilder() {
+    const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+    const builder: Record<string, unknown> = {};
+    let patch: Record<string, unknown> | null = null;
+
+    const match = () => rows.filter((row) => filters.every((f) => f(row)));
+
+    builder.eq = (col: string, val: unknown) => {
+      filters.push((row) => row[col] === val);
+      return builder;
+    };
+    builder.not = (col: string, _op: string, _val: unknown) => {
+      filters.push((row) => row[col] !== null && row[col] !== undefined);
+      return builder;
+    };
+    builder.lte = (col: string, val: string) => {
+      filters.push((row) => String(row[col]) <= val);
+      return builder;
+    };
+    builder.gte = (col: string, val: string) => {
+      filters.push((row) => String(row[col]) >= val);
+      return builder;
+    };
+    builder.order = () => Promise.resolve({ data: match(), error: null });
+    builder.select = () => {
+      const matched = match();
+      if (patch) for (const row of matched) Object.assign(row, patch);
+      return Promise.resolve({ data: matched, error: null });
+    };
+    builder.applyUpdate = (row: Record<string, unknown>) => {
+      patch = row;
+      // A bare .update().eq() with no .select() still has to apply.
+      const original = builder.eq as (c: string, v: unknown) => unknown;
+      builder.eq = (col: string, val: unknown) => {
+        original(col, val);
+        const result = { ...builder } as Record<string, unknown>;
+        result.then = (resolve: (v: unknown) => unknown) => {
+          for (const target of match()) Object.assign(target, patch);
+          return Promise.resolve(resolve({ data: null, error: null }));
+        };
+        return result;
+      };
+      return builder;
+    };
+    return builder;
+  }
+
+  function from(table: string) {
+    if (table === "planned_items") {
+      return {
+        select: () => plannedItemsBuilder(),
+        update: (row: Record<string, unknown>) => {
+          const builder = plannedItemsBuilder();
+          return (
+            builder.applyUpdate as (r: Record<string, unknown>) => unknown
+          )(row);
+        },
+      };
+    }
+    if (table === "time_entries") {
+      return {
+        insert(row: Record<string, unknown>) {
+          if (insertFails) {
+            return Promise.resolve({
+              data: null,
+              error: { message: "insert failed" },
+            });
+          }
+          inserts.push(row);
+          return Promise.resolve({ data: null, error: null });
+        },
+      };
+    }
+    throw new Error(`Unexpected table: ${table}`);
+  }
+
+  return {
+    supabase: { from } as unknown as Parameters<
+      typeof backfillCalendarEntries
+    >[0],
+    rows,
+    inserts,
+    failInserts: () => {
+      insertFails = true;
+    },
+  };
+}
+
+function makePlannedItem(overrides?: Record<string, unknown>) {
+  return {
+    id: "plan-1",
+    user_id: "user-1",
+    category_id: "cat-1",
+    auto_timer_done: false,
+    gcal_event_id: "evt-1",
+    title: "Deep work",
+    start_at: "2026-08-22T09:00:00.000Z",
+    end_at: "2026-08-22T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("backfillCalendarEntries", () => {
+  const now = new Date("2026-08-22T12:00:00.000Z");
+
+  it("records a window that ended while the app was never open", async () => {
+    const mock = createBackfillMock([makePlannedItem()]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(1);
+    expect(mock.inserts[0]).toMatchObject({
+      user_id: "user-1",
+      category_id: "cat-1",
+      started_at: "2026-08-22T09:00:00.000Z",
+      duration_minutes: 60,
+      source: "timer",
+      note: "Deep work",
+      needs_confirmation: false,
+    });
+    expect(mock.rows[0].auto_timer_done).toBe(true);
+  });
+
+  it("skips items already recorded, uncategorised, or not from the calendar", async () => {
+    const mock = createBackfillMock([
+      makePlannedItem({ id: "done", auto_timer_done: true }),
+      makePlannedItem({ id: "no-category", category_id: null }),
+      makePlannedItem({ id: "manual", gcal_event_id: null }),
+    ]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(0);
+  });
+
+  it("skips a window that has not ended yet", async () => {
+    const mock = createBackfillMock([
+      makePlannedItem({ end_at: "2026-08-22T13:00:00.000Z" }),
+    ]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(0);
+  });
+
+  it("skips windows older than the lookback bound", async () => {
+    const mock = createBackfillMock([
+      makePlannedItem({
+        start_at: "2026-08-01T09:00:00.000Z",
+        end_at: "2026-08-01T10:00:00.000Z",
+      }),
+    ]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(0);
+  });
+
+  it("leaves the running session's own item to its stop path", async () => {
+    const mock = createBackfillMock([makePlannedItem()]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now, "plan-1");
+
+    expect(mock.inserts).toHaveLength(0);
+    expect(mock.rows[0].auto_timer_done).toBe(false);
+  });
+
+  it("records each missed window exactly once across renders", async () => {
+    const mock = createBackfillMock([makePlannedItem()]);
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(1);
+  });
+
+  it("releases the claim when the entry insert fails", async () => {
+    const mock = createBackfillMock([makePlannedItem()]);
+    mock.failInserts();
+
+    await backfillCalendarEntries(mock.supabase, "user-1", now);
+
+    expect(mock.inserts).toHaveLength(0);
+    expect(mock.rows[0].auto_timer_done).toBe(false);
   });
 });
