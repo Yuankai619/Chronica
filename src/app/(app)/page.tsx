@@ -54,6 +54,10 @@ export default async function Home() {
       ).data)
     : null;
   const nowIso = new Date().toISOString();
+  // Refresh target for the next auto-start check. Includes windows already
+  // under way (clamped to "now") so one that becomes due mid-render — e.g.
+  // a category assigned while its event is live — still interrupts a
+  // running manual timer promptly, not only on the next unrelated refresh.
   const nextCalendarStartAt =
     (plannedToday ?? [])
       .filter(
@@ -61,10 +65,12 @@ export default async function Home() {
           i.gcal_event_id !== null &&
           i.category_id !== null &&
           !i.auto_timer_done &&
+          i.id !== session?.planned_item_id &&
           i.start_at !== null &&
-          i.start_at > nowIso,
+          i.end_at !== null &&
+          i.end_at > nowIso,
       )
-      .map((i) => i.start_at!)
+      .map((i) => (i.start_at! > nowIso ? i.start_at! : nowIso))
       .sort()[0] ?? null;
 
   const excluded = excludedCategoryIds(categories ?? []);
