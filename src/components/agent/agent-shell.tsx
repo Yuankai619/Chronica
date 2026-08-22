@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat, type UseChatHelpers } from "@ai-sdk/react";
 import {
@@ -8,7 +8,16 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
   type UIMessage,
 } from "ai";
-import { Bot, Brain, Loader2, Menu, Send, X } from "lucide-react";
+import {
+  Bot,
+  Brain,
+  CalendarClock,
+  ClipboardList,
+  Loader2,
+  Menu,
+  Send,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConversationList } from "@/components/agent/conversation-list";
 import { MemoryDrawer } from "@/components/agent/memory-drawer";
@@ -19,6 +28,21 @@ import type {
   MessagePage,
 } from "@/server/agent/conversations";
 import type { MemoryRow } from "@/server/agent/memories";
+
+const SLASH_COMMANDS = [
+  {
+    cmd: "/retro",
+    label: "Retro",
+    hint: "Review a past week",
+    icon: CalendarClock,
+  },
+  {
+    cmd: "/plan",
+    label: "Plan",
+    hint: "Plan an upcoming week",
+    icon: ClipboardList,
+  },
+];
 
 function conversationIdFromMessages(messages: UIMessage[]): string | null {
   for (const message of messages) {
@@ -69,6 +93,21 @@ function ChatMessage({
   );
 }
 
+function ThinkingBubble() {
+  return (
+    <div className="flex gap-3">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <Bot className="size-3.5" aria-hidden />
+      </div>
+      <div className="flex items-center gap-1.5 rounded-lg bg-panel/40 px-3.5 py-2.5">
+        <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:-0.3s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:-0.15s]" />
+        <span className="size-1.5 animate-pulse rounded-full bg-muted" />
+      </div>
+    </div>
+  );
+}
+
 export function AgentShell({
   configured,
   initialConversationId,
@@ -83,6 +122,7 @@ export function AgentShell({
   initialMemories: MemoryRow[];
 }) {
   const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [olderCursor, setOlderCursor] = useState(
     initialMessages?.nextCursor ?? null,
@@ -117,13 +157,18 @@ export function AgentShell({
   const conversationId =
     initialConversationId ?? conversationIdFromMessages(chat.messages);
 
-  // Sync the URL (an external system) once that id shows up, so a refresh
-  // reopens the same conversation instead of starting a new one.
+  // Sync the URL (an external system) once that id shows up AND the turn
+  // has actually finished streaming. Navigating remounts this component
+  // (it's keyed by conversation id in the parent Server Component) and
+  // refetches initialMessages from the DB — if we navigated the instant
+  // the id arrived (mid-stream, before onEnd's save resolves), the remount
+  // would replace the live client message with whatever had persisted so
+  // far, which could be nothing. Waiting for "ready" avoids that race.
   useEffect(() => {
-    if (!initialConversationId && conversationId) {
+    if (!initialConversationId && conversationId && chat.status === "ready") {
       router.replace(`/agent?c=${conversationId}`, { scroll: false });
     }
-  }, [initialConversationId, conversationId, router]);
+  }, [initialConversationId, conversationId, chat.status, router]);
 
   async function loadOlder() {
     if (!olderCursor || !conversationId) return;
@@ -142,10 +187,27 @@ export function AgentShell({
     chat.sendMessage({ text });
   }
 
+  function selectSlashCommand(cmd: string) {
+    setInput(`${cmd} `);
+    textareaRef.current?.focus();
+  }
+
   const busy = chat.status === "streaming" || chat.status === "submitted";
+  const lastMessage = chat.messages.at(-1);
+  const lastAssistantHasText =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts.some(
+      (p) => p.type === "text" && p.text.trim().length > 0,
+    );
+  const showThinking = busy && !lastAssistantHasText;
+
+  const slashMatches =
+    input.startsWith("/") && !input.includes(" ")
+      ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(input))
+      : [];
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] gap-4 lg:h-[calc(100vh-5rem)]">
+    <div className="-mx-4 flex h-[calc(100vh-6.5rem)] gap-4 sm:-mx-6 lg:-mx-10 lg:h-[calc(100vh-5rem)]">
       {/* Desktop conversation list */}
       <div className="hidden w-64 shrink-0 rounded-lg border border-hairline bg-panel/30 p-3 lg:block">
         <ConversationList
@@ -223,17 +285,42 @@ export function AgentShell({
               />
             ))
           )}
+          {showThinking ? <ThinkingBubble /> : null}
         </div>
 
-        <div className="border-t border-hairline p-3">
+        <div className="relative border-t border-hairline p-3">
+          {slashMatches.length > 0 ? (
+            <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-md border border-hairline bg-panel shadow-xl shadow-black/40">
+              {slashMatches.map((c) => (
+                <button
+                  key={c.cmd}
+                  type="button"
+                  onClick={() => selectSlashCommand(c.cmd)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-sm text-foreground/90 hover:bg-panel/60"
+                >
+                  <c.icon
+                    className="size-3.5 shrink-0 text-accent"
+                    aria-hidden
+                  />
+                  <span className="font-mono">{c.cmd}</span>
+                  <span className="text-xs text-muted">{c.hint}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="flex items-end gap-2 rounded-md border border-hairline bg-panel px-3 py-2 focus-within:border-muted">
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  submit();
+                  if (slashMatches.length > 0) {
+                    selectSlashCommand(slashMatches[0].cmd);
+                  } else {
+                    submit();
+                  }
                 }
               }}
               rows={1}
