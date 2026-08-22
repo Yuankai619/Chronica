@@ -22,7 +22,10 @@ import { cn } from "@/lib/utils";
 import { ConversationList } from "@/components/agent/conversation-list";
 import { MemoryDrawer } from "@/components/agent/memory-drawer";
 import { MessageParts } from "@/components/agent/message-parts";
-import { listMessagesAction } from "@/app/(app)/agent/actions";
+import {
+  listMemoriesAction,
+  listMessagesAction,
+} from "@/app/(app)/agent/actions";
 import type {
   ConversationPage,
   MessagePage,
@@ -131,6 +134,7 @@ export function AgentShell({
   const [listOpen, setListOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [memories, setMemories] = useState(initialMemories);
 
   const chat: UseChatHelpers<UIMessage> = useChat({
     id: initialConversationId ?? undefined,
@@ -170,6 +174,21 @@ export function AgentShell({
     }
   }, [initialConversationId, conversationId, chat.status, router]);
 
+  // The Memory drawer's data was a one-time server-rendered snapshot, so
+  // it stayed empty/stale for the rest of the session even after the
+  // agent wrote memories mid-conversation (only a full page refresh
+  // picked them up). Re-fetch whenever a turn finishes.
+  useEffect(() => {
+    if (chat.status !== "ready") return;
+    let cancelled = false;
+    listMemoriesAction().then((rows) => {
+      if (!cancelled) setMemories(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chat.status]);
+
   async function loadOlder() {
     if (!olderCursor || !conversationId) return;
     setLoadingOlder(true);
@@ -192,6 +211,16 @@ export function AgentShell({
     textareaRef.current?.focus();
   }
 
+  // Auto-grow the composer with content instead of staying pinned to one
+  // line; max-h-40 in the className below still caps it and lets it
+  // scroll past that.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
   const busy = chat.status === "streaming" || chat.status === "submitted";
   const lastMessage = chat.messages.at(-1);
   const lastAssistantHasText =
@@ -207,7 +236,7 @@ export function AgentShell({
       : [];
 
   return (
-    <div className="-mx-4 flex h-[calc(100vh-6.5rem)] gap-4 sm:-mx-6 lg:-mx-10 lg:h-[calc(100vh-5rem)]">
+    <div className="flex h-[calc(100dvh-5.5rem)] gap-3 lg:h-dvh">
       {/* Desktop conversation list */}
       <div className="hidden w-64 shrink-0 rounded-lg border border-hairline bg-panel/30 p-3 lg:block">
         <ConversationList
@@ -326,7 +355,7 @@ export function AgentShell({
               rows={1}
               placeholder="Ask about your time, or /retro, /plan…"
               disabled={!configured}
-              className="max-h-40 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted/70 focus:outline-none disabled:opacity-50"
+              className="max-h-40 flex-1 resize-none overflow-y-auto bg-transparent text-sm text-foreground placeholder:text-muted/70 focus:outline-none disabled:opacity-50"
             />
             <button
               type="button"
@@ -374,7 +403,7 @@ export function AgentShell({
 
       <MemoryDrawer
         open={memoryOpen}
-        memories={initialMemories}
+        memories={memories}
         onClose={() => setMemoryOpen(false)}
       />
     </div>

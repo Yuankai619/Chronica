@@ -21,6 +21,7 @@ import {
   type WeekCompareRow,
 } from "@/components/summary-charts";
 import Link from "next/link";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Summary — Chronica" };
 
@@ -189,173 +190,180 @@ export default async function SummaryPage({
   const trendMax = trend ? Math.max(...trend, 1) : 1;
 
   return (
-    <main>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">
-          Summary · <span className="font-mono">{label}</span>
-        </h1>
-        <nav className="flex gap-3 text-sm">
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/summary?period=${prev}`}
-          >
-            ← Prev
-          </Link>
-          {mode === "month" ? (
+    <PageContainer>
+      <main>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">
+            Summary · <span className="font-mono">{label}</span>
+          </h1>
+          <nav className="flex gap-3 text-sm">
             <Link
               className="text-muted hover:text-foreground"
-              href={`/summary?period=${year}`}
+              href={`/summary?period=${prev}`}
             >
-              Year view
+              ← Prev
             </Link>
-          ) : (
-            <Link className="text-muted hover:text-foreground" href="/summary">
-              Month view
-            </Link>
-          )}
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/summary?period=${next}`}
-          >
-            Next →
-          </Link>
-        </nav>
-      </div>
-
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        <Card>
-          <p className="microlabel mb-1">Recorded</p>
-          <p className="font-mono text-xl font-semibold tabular-nums">
-            {formatDuration(summary.totalMinutes)}
-          </p>
-          {summary.excludedMinutes > 0 ? (
-            <p className="mt-1 text-xs text-muted">
-              + {formatDuration(summary.excludedMinutes)} not counted
-            </p>
-          ) : null}
-        </Card>
-        <Card>
-          <p className="microlabel mb-1">Entries</p>
-          <p className="font-mono text-xl font-semibold tabular-nums">
-            {summary.entryCount}
-          </p>
-        </Card>
-        <Card>
-          <p className="microlabel mb-1">Categories</p>
-          <p className="font-mono text-xl font-semibold tabular-nums">
-            {summary.categories.length}
-          </p>
-        </Card>
-      </div>
-
-      {trend ? (
-        <div className="mb-8">
-          <h2 className="microlabel mb-2">Recorded time by month</h2>
-          <div className="grid grid-cols-12 items-end gap-1.5">
-            {trend.map((minutes, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className="flex h-20 w-full items-end rounded-sm border border-hairline bg-panel/40">
-                  <div
-                    className="w-full rounded-sm bg-accent/80"
-                    style={{
-                      height: `${Math.round((minutes / trendMax) * 100)}%`,
-                    }}
-                    aria-label={`${MONTHS[i]}: ${formatDuration(minutes)}`}
-                  />
-                </div>
-                <span className="microlabel">{MONTHS[i]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <Card className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="mb-0">
-            Planned vs actual · week of {weekKey}
-          </CardTitle>
-          <nav className="flex gap-3 text-xs">
+            {mode === "month" ? (
+              <Link
+                className="text-muted hover:text-foreground"
+                href={`/summary?period=${year}`}
+              >
+                Year view
+              </Link>
+            ) : (
+              <Link
+                className="text-muted hover:text-foreground"
+                href="/summary"
+              >
+                Month view
+              </Link>
+            )}
             <Link
               className="text-muted hover:text-foreground"
-              href={`/summary?period=${period ?? ""}&week=${shiftWeek(-1)}`}
+              href={`/summary?period=${next}`}
             >
-              ← Prev week
-            </Link>
-            <Link
-              className="text-muted hover:text-foreground"
-              href={`/summary?period=${period ?? ""}&week=${shiftWeek(1)}`}
-            >
-              Next week →
+              Next →
             </Link>
           </nav>
         </div>
-        <div className="mt-4">
-          <WeekCompareChart rows={compareRows} />
+
+        <div className="mb-6 grid grid-cols-3 gap-3">
+          <Card>
+            <p className="microlabel mb-1">Recorded</p>
+            <p className="font-mono text-xl font-semibold tabular-nums">
+              {formatDuration(summary.totalMinutes)}
+            </p>
+            {summary.excludedMinutes > 0 ? (
+              <p className="mt-1 text-xs text-muted">
+                + {formatDuration(summary.excludedMinutes)} not counted
+              </p>
+            ) : null}
+          </Card>
+          <Card>
+            <p className="microlabel mb-1">Entries</p>
+            <p className="font-mono text-xl font-semibold tabular-nums">
+              {summary.entryCount}
+            </p>
+          </Card>
+          <Card>
+            <p className="microlabel mb-1">Categories</p>
+            <p className="font-mono text-xl font-semibold tabular-nums">
+              {summary.categories.length}
+            </p>
+          </Card>
         </div>
-      </Card>
 
-      <Card className="mb-6">
-        <CardTitle>Average weekly time per category</CardTitle>
-        <CategoryAverageChart rows={rangeRows} />
-      </Card>
+        {trend ? (
+          <div className="mb-8">
+            <h2 className="microlabel mb-2">Recorded time by month</h2>
+            <div className="grid grid-cols-12 items-end gap-1.5">
+              {trend.map((minutes, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className="flex h-20 w-full items-end rounded-sm border border-hairline bg-panel/40">
+                    <div
+                      className="w-full rounded-sm bg-accent/80"
+                      style={{
+                        height: `${Math.round((minutes / trendMax) * 100)}%`,
+                      }}
+                      aria-label={`${MONTHS[i]}: ${formatDuration(minutes)}`}
+                    />
+                  </div>
+                  <span className="microlabel">{MONTHS[i]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
-      {summary.categories.length === 0 ? (
-        <p className="text-sm text-muted">Nothing recorded in this period.</p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-hairline text-left">
-              <th className="microlabel py-2 font-normal">Category</th>
-              <th className="microlabel py-2 text-right font-normal">Total</th>
-              <th className="microlabel py-2 text-right font-normal">
-                Sessions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.categories.map((row) => (
-              <tr
-                key={row.category.id}
-                className={cn(
-                  "border-b border-hairline",
-                  row.category.excluded_from_totals && "opacity-70",
-                )}
-                title={
-                  row.category.excluded_from_totals
-                    ? "Not counted toward the total"
-                    : undefined
-                }
-                aria-label={
-                  row.category.excluded_from_totals
-                    ? `${row.category.name}, not counted toward the total`
-                    : undefined
-                }
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="mb-0">
+              Planned vs actual · week of {weekKey}
+            </CardTitle>
+            <nav className="flex gap-3 text-xs">
+              <Link
+                className="text-muted hover:text-foreground"
+                href={`/summary?period=${period ?? ""}&week=${shiftWeek(-1)}`}
               >
-                <td className="py-2.5">
-                  <CategoryBadge
-                    id={row.category.id}
-                    name={row.category.name}
-                    color={row.category.color}
-                  />
-                </td>
-                <td className="py-2.5 text-right font-mono tabular-nums">
-                  {formatDuration(row.totalMinutes)}
-                </td>
-                <td
-                  className={cn(
-                    "py-2.5 text-right font-mono tabular-nums",
-                    // The row is already dimmed; muting on top would stack.
-                    row.category.excluded_from_totals ? "" : "text-muted",
-                  )}
-                >
-                  {row.entryCount}
-                </td>
+                ← Prev week
+              </Link>
+              <Link
+                className="text-muted hover:text-foreground"
+                href={`/summary?period=${period ?? ""}&week=${shiftWeek(1)}`}
+              >
+                Next week →
+              </Link>
+            </nav>
+          </div>
+          <div className="mt-4">
+            <WeekCompareChart rows={compareRows} />
+          </div>
+        </Card>
+
+        <Card className="mb-6">
+          <CardTitle>Average weekly time per category</CardTitle>
+          <CategoryAverageChart rows={rangeRows} />
+        </Card>
+
+        {summary.categories.length === 0 ? (
+          <p className="text-sm text-muted">Nothing recorded in this period.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-hairline text-left">
+                <th className="microlabel py-2 font-normal">Category</th>
+                <th className="microlabel py-2 text-right font-normal">
+                  Total
+                </th>
+                <th className="microlabel py-2 text-right font-normal">
+                  Sessions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </main>
+            </thead>
+            <tbody>
+              {summary.categories.map((row) => (
+                <tr
+                  key={row.category.id}
+                  className={cn(
+                    "border-b border-hairline",
+                    row.category.excluded_from_totals && "opacity-70",
+                  )}
+                  title={
+                    row.category.excluded_from_totals
+                      ? "Not counted toward the total"
+                      : undefined
+                  }
+                  aria-label={
+                    row.category.excluded_from_totals
+                      ? `${row.category.name}, not counted toward the total`
+                      : undefined
+                  }
+                >
+                  <td className="py-2.5">
+                    <CategoryBadge
+                      id={row.category.id}
+                      name={row.category.name}
+                      color={row.category.color}
+                    />
+                  </td>
+                  <td className="py-2.5 text-right font-mono tabular-nums">
+                    {formatDuration(row.totalMinutes)}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-2.5 text-right font-mono tabular-nums",
+                      // The row is already dimmed; muting on top would stack.
+                      row.category.excluded_from_totals ? "" : "text-muted",
+                    )}
+                  >
+                    {row.entryCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </main>
+    </PageContainer>
   );
 }

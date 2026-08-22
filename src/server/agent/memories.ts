@@ -62,8 +62,27 @@ export async function upsertMemory(
   input: UpsertMemoryInput,
 ): Promise<MemoryRow> {
   const now = new Date().toISOString();
+
+  // Never trust a model-supplied id blindly: an upsert with onConflict on
+  // an id that doesn't belong to (or doesn't yet exist for) this user
+  // would either write a garbage row at that exact id or, worse, silently
+  // collide multiple distinct "new" memories onto the same row if the
+  // model reuses a made-up id across calls (observed in practice — a
+  // placeholder like the all-zero UUID). Only honor it as an update
+  // target when it actually resolves to one of this user's memories.
+  let targetId: string | undefined;
+  if (input.id) {
+    const { data: existing } = await supabase
+      .from("ai_memories")
+      .select("id")
+      .eq("id", input.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    targetId = existing?.id;
+  }
+
   const row = {
-    ...(input.id ? { id: input.id } : {}),
+    ...(targetId ? { id: targetId } : {}),
     user_id: userId,
     kind: input.kind,
     content: input.content,

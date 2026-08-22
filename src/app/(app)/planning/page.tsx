@@ -18,6 +18,7 @@ import { CalendarSyncButton } from "@/components/calendar-sync-button";
 import { CopyWeekButton } from "@/components/copy-week-button";
 import { isGoogleLinked } from "@/server/google-calendar";
 import { CategoryBadge } from "@/components/ui/badge";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Planning — Chronica" };
 
@@ -77,79 +78,81 @@ export default async function PlanningPage({
   );
 
   return (
-    <main>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">
-          Plan · week of{" "}
-          <span className="font-mono tabular-nums">{weekKey}</span>
-        </h1>
-        <nav className="flex items-center gap-3 text-sm">
-          <CopyWeekButton weekKey={weekKey} />
-          {gcalLinked ? <CalendarSyncButton weekKey={weekKey} /> : null}
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/planning?week=${addDaysKey(weekKey, -7)}`}
-          >
-            ← Prev
-          </Link>
-          <Link className="text-muted hover:text-foreground" href="/planning">
-            This week
-          </Link>
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/planning?week=${addDaysKey(weekKey, 7)}`}
-          >
-            Next →
-          </Link>
-        </nav>
-      </div>
-
-      {status.length > 0 ? (
-        <div className="mb-6">
-          <p className="microlabel mb-2">
-            Last week ({reviewWeekKey}) · actual / planned
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {status.map((row) => (
-              <div
-                key={row.category.id}
-                className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
-              >
-                <CategoryBadge
-                  id={row.category.id}
-                  name={row.category.name}
-                  color={row.category.color}
-                />
-                <span className="font-mono text-xs text-muted tabular-nums">
-                  {formatDuration(row.actualMinutes)} /{" "}
-                  {formatDuration(row.plannedMinutes)}
-                </span>
-                <span
-                  className={`font-mono text-xs tabular-nums ${
-                    row.diffMinutes > 0
-                      ? "text-danger"
-                      : row.diffMinutes < 0
-                        ? "text-accent"
-                        : "text-muted"
-                  }`}
-                >
-                  {formatSignedDuration(row.diffMinutes)}
-                </span>
-              </div>
-            ))}
-          </div>
+    <PageContainer>
+      <main>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">
+            Plan · week of{" "}
+            <span className="font-mono tabular-nums">{weekKey}</span>
+          </h1>
+          <nav className="flex items-center gap-3 text-sm">
+            <CopyWeekButton weekKey={weekKey} />
+            {gcalLinked ? <CalendarSyncButton weekKey={weekKey} /> : null}
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/planning?week=${addDaysKey(weekKey, -7)}`}
+            >
+              ← Prev
+            </Link>
+            <Link className="text-muted hover:text-foreground" href="/planning">
+              This week
+            </Link>
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/planning?week=${addDaysKey(weekKey, 7)}`}
+            >
+              Next →
+            </Link>
+          </nav>
         </div>
-      ) : null}
 
-      <div>
-        <PlanBoard
-          dayKeys={dayKeys}
-          todayKey={todayKey}
-          items={items ?? []}
-          categories={sorted}
-          timeZone={timeZone}
-        />
-      </div>
-    </main>
+        {status.length > 0 ? (
+          <div className="mb-6">
+            <p className="microlabel mb-2">
+              Last week ({reviewWeekKey}) · actual / planned
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {status.map((row) => (
+                <div
+                  key={row.category.id}
+                  className="flex items-center gap-2 rounded-md border border-hairline px-2.5 py-1.5 text-sm"
+                >
+                  <CategoryBadge
+                    id={row.category.id}
+                    name={row.category.name}
+                    color={row.category.color}
+                  />
+                  <span className="font-mono text-xs text-muted tabular-nums">
+                    {formatDuration(row.actualMinutes)} /{" "}
+                    {formatDuration(row.plannedMinutes)}
+                  </span>
+                  <span
+                    className={`font-mono text-xs tabular-nums ${
+                      row.diffMinutes > 0
+                        ? "text-danger"
+                        : row.diffMinutes < 0
+                          ? "text-accent"
+                          : "text-muted"
+                    }`}
+                  >
+                    {formatSignedDuration(row.diffMinutes)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div>
+          <PlanBoard
+            dayKeys={dayKeys}
+            todayKey={todayKey}
+            items={items ?? []}
+            categories={sorted}
+            timeZone={timeZone}
+          />
+        </div>
+      </main>
+    </PageContainer>
   );
 }

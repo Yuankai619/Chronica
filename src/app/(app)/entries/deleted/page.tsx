@@ -4,6 +4,7 @@ import { deletedRetentionCutoff, DELETED_RETENTION_DAYS } from "@/lib/entries";
 import { getUserTimeZone } from "@/server/tz";
 import { DeletedEntriesList } from "@/components/deleted-entries-list";
 import { Card } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Deleted entries — Chronica" };
 
@@ -28,39 +29,41 @@ export default async function DeletedEntriesPage() {
   ]);
 
   return (
-    <main>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Deleted entries</h1>
-        <Link
-          className="text-sm text-muted hover:text-foreground"
-          href="/entries"
-        >
-          ← Entries
-        </Link>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-danger">Failed to load: {error.message}</p>
-      ) : (entries ?? []).length === 0 ? (
-        <Card>
-          <p className="text-sm text-muted">
-            Nothing deleted in the last {DELETED_RETENTION_DAYS} days.
-          </p>
+    <PageContainer>
+      <main>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">Deleted entries</h1>
           <Link
-            className="mt-2 inline-block text-sm text-muted hover:text-foreground"
+            className="text-sm text-muted hover:text-foreground"
             href="/entries"
           >
-            Back to entries
+            ← Entries
           </Link>
-        </Card>
-      ) : (
-        <DeletedEntriesList
-          entries={entries ?? []}
-          categories={categories ?? []}
-          timeZone={timeZone}
-          nowIso={now.toISOString()}
-        />
-      )}
-    </main>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-danger">Failed to load: {error.message}</p>
+        ) : (entries ?? []).length === 0 ? (
+          <Card>
+            <p className="text-sm text-muted">
+              Nothing deleted in the last {DELETED_RETENTION_DAYS} days.
+            </p>
+            <Link
+              className="mt-2 inline-block text-sm text-muted hover:text-foreground"
+              href="/entries"
+            >
+              Back to entries
+            </Link>
+          </Card>
+        ) : (
+          <DeletedEntriesList
+            entries={entries ?? []}
+            categories={categories ?? []}
+            timeZone={timeZone}
+            nowIso={now.toISOString()}
+          />
+        )}
+      </main>
+    </PageContainer>
   );
 }
