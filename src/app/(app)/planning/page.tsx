@@ -14,7 +14,6 @@ import { getUserTimeZone } from "@/server/tz";
 import { formatDuration } from "@/lib/entries";
 import { formatSignedDuration } from "@/lib/settlement";
 import { PlanBoard } from "@/components/plan-board";
-import { RetroCard } from "@/components/retro-card";
 import { CalendarSyncButton } from "@/components/calendar-sync-button";
 import { CopyWeekButton } from "@/components/copy-week-button";
 import { isGoogleLinked } from "@/server/google-calendar";
@@ -48,8 +47,6 @@ export default async function PlanningPage({
     { data: items },
     { data: lastWeekItems },
     { data: lastWeekEntries },
-    { data: retro },
-    { count: reviewEntryCount },
     gcalLinked,
   ] = await Promise.all([
     supabase.from("categories").select("*").is("archived_at", null),
@@ -66,17 +63,6 @@ export default async function PlanningPage({
     supabase
       .from("time_entries")
       .select("*")
-      .gte("started_at", reviewWeekStart.toISOString())
-      .lt("started_at", weekStartInstant.toISOString())
-      .is("deleted_at", null),
-    supabase
-      .from("retros")
-      .select("content")
-      .eq("week_start", reviewWeekKey)
-      .maybeSingle(),
-    supabase
-      .from("time_entries")
-      .select("id", { count: "exact", head: true })
       .gte("started_at", reviewWeekStart.toISOString())
       .lt("started_at", weekStartInstant.toISOString())
       .is("deleted_at", null),
@@ -155,7 +141,7 @@ export default async function PlanningPage({
         </div>
       ) : null}
 
-      <div className="mb-8">
+      <div>
         <PlanBoard
           dayKeys={dayKeys}
           todayKey={todayKey}
@@ -164,12 +150,6 @@ export default async function PlanningPage({
           timeZone={timeZone}
         />
       </div>
-
-      <RetroCard
-        reviewWeekKey={reviewWeekKey}
-        initialContent={retro?.content ?? null}
-        disabled={(reviewEntryCount ?? 0) === 0}
-      />
     </main>
   );
 }

@@ -1,3 +1,8 @@
 allowBuilds:
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - "@ai-sdk/gateway@4.0.61"
+  - "@ai-sdk/mcp@2.0.35"
+  - "@ai-sdk/react@4.0.79"
+  - ai@7.0.76

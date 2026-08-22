@@ -8,7 +8,11 @@ time-statistics method. The full behavioral spec lives in
 
 - **Framework:** Next.js (App Router only — never the Pages Router) + TypeScript (strict)
 - **Backend:** Supabase (Postgres, Google sign-in; Microsoft OAuth is link-only for To Do access)
-- **AI (Phase 2):** Mastra Agent with an OpenAI-compatible LLM provider
+- **AI (Phase 2):** Vercel AI SDK (`ai` + `@ai-sdk/react` + `@ai-sdk/openai`) driving
+  `gpt-5.6-terra` directly against the OpenAI API — no agent framework, no AG-UI.
+  The agent loop runs in-process in a Next.js route handler (`src/app/api/agent/`);
+  tools are plain functions over a request-scoped Supabase client, so RLS — not
+  the tool layer — is what keeps one user's data out of another's.
 - **Package manager:** pnpm — never use npm or yarn
 - **Testing:** Vitest + Testing Library; unit tests are required for domain logic
 
@@ -107,6 +111,10 @@ Repo-installed skills (symlinked into `.claude/skills/`):
 - Weekly plans are **snapshots** — editing past entries never rewrites a saved plan.
 - Category descriptions are admin/AI context only; never render them on the
   execution/timer UI.
+- `planned_items` rows with a non-null `gcal_event_id` are Google Calendar
+  mirrors and auto-start **locked** timer sessions (`src/server/timer.ts`).
+  The AI Agent's planning tools must never insert, update, or delete those
+  rows — only plain manually-planned rows (`gcal_event_id is null`).
 
 ## Workflow
 
