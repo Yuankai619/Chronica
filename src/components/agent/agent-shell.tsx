@@ -221,6 +221,12 @@ export function AgentShell({
     el.style.height = `${el.scrollHeight}px`;
   }, [input]);
 
+  // An assistant message exists in chat.messages the instant the server
+  // starts responding, before it has any parts yet — rendering it as its
+  // own empty bubble stacked the avatar right on top of the thinking
+  // indicator's avatar. Skip it; ThinkingBubble covers that gap.
+  const renderableMessages = chat.messages.filter((m) => m.parts.length > 0);
+
   const busy = chat.status === "streaming" || chat.status === "submitted";
   const lastMessage = chat.messages.at(-1);
   const lastAssistantHasText =
@@ -293,7 +299,7 @@ export function AgentShell({
             </div>
           ) : null}
 
-          {chat.messages.length === 0 ? (
+          {renderableMessages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center text-muted">
               <Bot className="size-8" aria-hidden />
               <p className="text-sm">
@@ -303,7 +309,7 @@ export function AgentShell({
               </p>
             </div>
           ) : (
-            chat.messages.map((m) => (
+            renderableMessages.map((m) => (
               <ChatMessage
                 key={m.id}
                 message={m}

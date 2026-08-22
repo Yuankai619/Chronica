@@ -169,4 +169,4 @@ Delivery is split into two phases:
 
 - **Week start day** is fixed to Monday for now; making it configurable is deferred.
 - **AI long-term memory shape** (what exactly is stored and how it is summarized over time) needs its own design pass before Phase 2 implementation.
-- Technical constraints stated by the owner (kept out of behavioral spec): Next.js + TypeScript, Supabase, Mastra Agent with OpenAI-standard LLM provider, Google sign-in with Microsoft account linking, unit tests required, clean software architecture. UI: minimalist, dark theme, RWD, no "AI-looking" design.
+- Technical constraints stated by the owner (kept out of behavioral spec): Next.js + TypeScript, Supabase, Vercel AI SDK against the OpenAI API (no agent framework — see [docs/agent-architecture.md](./docs/agent-architecture.md)), Google sign-in with Microsoft account linking, unit tests required, clean software architecture. UI: minimalist, dark theme, RWD, no "AI-looking" design.
