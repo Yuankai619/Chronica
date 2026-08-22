@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
+  stepCountIs,
   streamText,
   toUIMessageStream,
   type UIMessage,
@@ -122,6 +123,11 @@ export async function POST(request: Request) {
     // The only tool that writes anything (writeWeekPlan) needs an explicit
     // user click before it runs; every read/memory tool executes freely.
     toolApproval: { writeWeekPlan: "user-approval" },
+    // streamText defaults to a single step, which stops the loop right
+    // after a tool call executes and never lets the model read the result
+    // and reply — a real regression caught in live testing. Retro/Plan can
+    // legitimately chain several read-tool calls before a final answer.
+    stopWhen: stepCountIs(20),
     providerOptions: AGENT_PROVIDER_OPTIONS,
   });
 
