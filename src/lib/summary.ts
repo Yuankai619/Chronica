@@ -1,6 +1,6 @@
 import type { Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
-import { dayKeyInTz } from "@/lib/tz";
+import { addDaysKey, dayKeyInTz, weekStartKeyOf } from "@/lib/tz";
 
 export interface CategorySummary {
   category: Category;
@@ -61,15 +61,81 @@ export function summarizePeriod(
   };
 }
 
-/** Recorded minutes per month (0-11) of the timezone's calendar year. */
-export function monthlyRecordedTrend(
-  entries: TimeEntry[],
-  timeZone: string,
-): number[] {
-  const months = new Array<number>(12).fill(0);
-  for (const entry of entries) {
-    const key = dayKeyInTz(new Date(entry.started_at), timeZone);
-    months[Number(key.slice(5, 7)) - 1] += entry.duration_minutes;
+export interface WeeklyBuckets {
+  /** One total per week, aligned to the `weeks` array passed in. */
+  total: number[];
+  /** categoryId -> one total per week, same alignment. */
+  byCategory: Record<string, number[]>;
+}
+
+/** Monday keys from `fromKey`'s week through `throughKey`'s week, ascending. */
+export function weeklyHistoryWeeks(
+  fromKey: string,
+  throughKey: string,
+): string[] {
+  const weeks: string[] = [];
+  for (
+    let wk = weekStartKeyOf(fromKey);
+    wk <= throughKey;
+    wk = addDaysKey(wk, 7)
+  ) {
+    weeks.push(wk);
   }
-  return months;
+  return weeks;
+}
+
+/**
+ * Buckets recorded minutes into `weeks`, both as a total and per category.
+ * `excludedFromTotal` categories are left out of `total` (matching how the
+ * period summary's headline total works) but still get their own row in
+ * `byCategory` — a category can always see its own history.
+ */
+export function bucketRecordedMinutesByWeek(
+  entries: Pick<TimeEntry, "category_id" | "duration_minutes" | "started_at">[],
+  weeks: string[],
+  timeZone: string,
+  excludedFromTotal: Set<string>,
+): WeeklyBuckets {
+  const index = new Map(weeks.map((wk, i) => [wk, i]));
+  const total = new Array<number>(weeks.length).fill(0);
+  const byCategory: Record<string, number[]> = {};
+  for (const entry of entries) {
+    const wk = weekStartKeyOf(dayKeyInTz(new Date(entry.started_at), timeZone));
+    const i = index.get(wk);
+    if (i === undefined) continue;
+    if (!excludedFromTotal.has(entry.category_id))
+      total[i] += entry.duration_minutes;
+    const arr = (byCategory[entry.category_id] ??= new Array(weeks.length).fill(
+      0,
+    ));
+    arr[i] += entry.duration_minutes;
+  }
+  return { total, byCategory };
+}
+
+/** Buckets planned minutes into `weeks`, both as a total and per category. */
+export function bucketPlannedMinutesByWeek(
+  items: {
+    day: string;
+    expected_minutes: number;
+    category_id: string | null;
+  }[],
+  weeks: string[],
+): WeeklyBuckets {
+  const index = new Map(weeks.map((wk, i) => [wk, i]));
+  const total = new Array<number>(weeks.length).fill(0);
+  const byCategory: Record<string, number[]> = {};
+  for (const item of items) {
+    const wk = weekStartKeyOf(item.day);
+    const i = index.get(wk);
+    if (i === undefined) continue;
+    total[i] += item.expected_minutes;
+    if (item.category_id) {
+      const arr = (byCategory[item.category_id] ??= new Array(
+        weeks.length,
+      ).fill(0));
+      arr[i] += item.expected_minutes;
+    }
+  }
+  return { total, byCategory };
 }
