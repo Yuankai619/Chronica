@@ -3,6 +3,10 @@
 Chronica is a personal time-management web app based on Lyubishchev's
 time-statistics method. The full behavioral spec lives in
 [requirement.md](./requirement.md) — read it before implementing features.
+Working on the AI Agent (`/agent`, Chat/Memory/`/retro`/`/plan`)? Read
+[docs/agent-architecture.md](./docs/agent-architecture.md) first — it's a
+living document; update it in the same PR when you change that
+subsystem's architecture.
 
 ## Tech Stack
 
@@ -72,11 +76,12 @@ GPG passphrase.
 
 - `src/app/(app)/` — authenticated pages (timer, entries, week, planning,
   tasks, summary, categories, settings) + their server actions
-- `src/app/api/` — route handlers (Microsoft OAuth, AI retro)
+- `src/app/api/` — route handlers (Microsoft OAuth, the AI Agent chat route)
 - `src/lib/` — pure domain logic (week attribution, settlement, rollover,
   accuracy, summaries); keep this framework-free and unit-tested
 - `src/server/` — server-only services (timer reconcile, planning context,
-  Microsoft Graph, Mastra retro agent)
+  Microsoft Graph, the AI Agent's tools/context/memory —
+  see [docs/agent-architecture.md](./docs/agent-architecture.md))
 - `src/components/` — React components; `src/components/ui/` shadcn-style
   primitives (Tailwind v4 tokens in `globals.css`)
 - `.agents/skills/` — installed agent skills (see below)
