@@ -2,24 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { excludedCategoryIds } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/entries";
-import { monthlyRecordedTrend, summarizePeriod } from "@/lib/summary";
+import {
+  bucketPlannedMinutesByWeek,
+  bucketRecordedMinutesByWeek,
+  summarizePeriod,
+  weeklyHistoryWeeks,
+} from "@/lib/summary";
 import { CategoryBadge } from "@/components/ui/badge";
-import { Card, CardTitle } from "@/components/ui/card";
-import {
-  addDaysKey,
-  dayKeyInTz,
-  weekStartKeyOf,
-  zonedDayStart,
-} from "@/lib/tz";
+import { Card } from "@/components/ui/card";
+import { dayKeyInTz, weekStartKeyOf, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
-import { plannedByCategory } from "@/lib/plan-board";
-import { actualsByCategory } from "@/lib/settlement";
-import {
-  CategoryAverageChart,
-  WeekCompareChart,
-  type RangeRow,
-  type WeekCompareRow,
-} from "@/components/summary-charts";
+import { SummaryHistoryChart } from "@/components/summary-history-chart";
 import Link from "next/link";
 import { PageContainer } from "@/components/ui/page-container";
 
@@ -65,9 +58,9 @@ function parsePeriod(
 export default async function SummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; week?: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
-  const { period, week } = await searchParams;
+  const { period } = await searchParams;
   const timeZone = await getUserTimeZone();
   const todayKey = dayKeyInTz(new Date(), timeZone);
   const { mode, year, month } = parsePeriod(period, todayKey);
@@ -94,23 +87,17 @@ export default async function SummaryPage({
       ? String(year + 1)
       : `${month === 11 ? year + 1 : year}-${String(month === 11 ? 1 : month + 2).padStart(2, "0")}`;
 
-  const weekKey =
-    week && /^\d{4}-\d{2}-\d{2}$/.test(week)
-      ? weekStartKeyOf(week)
-      : weekStartKeyOf(todayKey);
-  const weekStart = zonedDayStart(weekKey, timeZone);
-  const weekEnd = zonedDayStart(addDaysKey(weekKey, 7), timeZone);
-  const weekEndKey = addDaysKey(weekKey, 6);
   const yearAgo = new Date();
   yearAgo.setDate(yearAgo.getDate() - 365);
+  const yearAgoKey = dayKeyInTz(yearAgo, timeZone);
+  const currentWeekKey = weekStartKeyOf(todayKey);
 
   const supabase = await createClient();
   const [
     { data: categories },
     { data: entries },
-    { data: weekEntries },
-    { data: weekItems },
     { data: yearEntries },
+    { data: yearPlannedItems },
   ] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase
@@ -122,72 +109,47 @@ export default async function SummaryPage({
       .limit(10000),
     supabase
       .from("time_entries")
-      .select("*")
-      .gte("started_at", weekStart.toISOString())
-      .lt("started_at", weekEnd.toISOString())
-      .is("deleted_at", null),
-    supabase
-      .from("planned_items")
-      .select("*")
-      .gte("day", weekKey)
-      .lte("day", weekEndKey),
-    supabase
-      .from("time_entries")
       .select("category_id, duration_minutes, started_at")
       .gte("started_at", yearAgo.toISOString())
       .is("deleted_at", null)
       .limit(10000),
+    supabase
+      .from("planned_items")
+      .select("day, expected_minutes, category_id")
+      .gte("day", yearAgoKey)
+      .lte("day", todayKey)
+      .limit(20000),
   ]);
-
-  const weekPlanned = plannedByCategory(weekItems ?? []);
-  const weekActual = actualsByCategory(
-    (weekEntries ?? []) as Parameters<typeof actualsByCategory>[0],
-  );
-  const compareRows: WeekCompareRow[] = (categories ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-    plannedMinutes: weekPlanned.get(c.id) ?? 0,
-    actualMinutes: weekActual.get(c.id) ?? 0,
-  }));
-
-  const nowMs = yearAgo.getTime() + 365 * 86_400_000;
-  const rangeDays = [30, 90, 180, 365];
-  const rangeTotals = new Map<string, [number, number, number, number]>();
-  for (const e of yearEntries ?? []) {
-    const ageDays = (nowMs - Date.parse(e.started_at)) / 86_400_000;
-    let totals = rangeTotals.get(e.category_id);
-    if (!totals) {
-      totals = [0, 0, 0, 0];
-      rangeTotals.set(e.category_id, totals);
-    }
-    for (const [i, days] of rangeDays.entries()) {
-      if (ageDays <= days) totals[i] += e.duration_minutes;
-    }
-  }
-  const rangeRows: RangeRow[] = (categories ?? [])
-    .filter((c) => rangeTotals.has(c.id))
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      totals: rangeTotals.get(c.id)!,
-    }));
-
-  function shiftWeek(weeks: number): string {
-    return addDaysKey(weekKey, weeks * 7);
-  }
 
   const summary = summarizePeriod(categories ?? [], entries ?? []);
   const excluded = excludedCategoryIds(categories ?? []);
-  const trend =
-    mode === "year"
-      ? monthlyRecordedTrend(
-          (entries ?? []).filter((e) => !excluded.has(e.category_id)),
-          timeZone,
-        )
-      : null;
-  const trendMax = trend ? Math.max(...trend, 1) : 1;
+
+  // Weekly history: total recorded/planned minutes per week, plus the same
+  // buckets split per category, from a year ago through the current week.
+  const historyWeeks = weeklyHistoryWeeks(yearAgoKey, currentWeekKey);
+  const recorded = bucketRecordedMinutesByWeek(
+    yearEntries ?? [],
+    historyWeeks,
+    timeZone,
+    excluded,
+  );
+  const planned = bucketPlannedMinutesByWeek(
+    yearPlannedItems ?? [],
+    historyWeeks,
+  );
+  const historyCategories = (categories ?? [])
+    .filter((c) => recorded.byCategory[c.id] || planned.byCategory[c.id])
+    .map((c) => ({ id: c.id, name: c.name, color: c.color }));
+
+  const categoryTotals = summary.categories
+    .map((row) => ({
+      id: row.category.id,
+      name: row.category.name,
+      color: row.category.color,
+      totalMinutes: row.totalMinutes,
+    }))
+    .filter((row) => row.totalMinutes > 0)
+    .toSorted((a, b) => b.totalMinutes - a.totalMinutes);
 
   return (
     <PageContainer>
@@ -253,57 +215,15 @@ export default async function SummaryPage({
           </Card>
         </div>
 
-        {trend ? (
-          <div className="mb-8">
-            <h2 className="microlabel mb-2">Recorded time by month</h2>
-            <div className="grid grid-cols-12 items-end gap-1.5">
-              {trend.map((minutes, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <div className="flex h-20 w-full items-end rounded-sm border border-hairline bg-panel/40">
-                    <div
-                      className="w-full rounded-sm bg-accent/80"
-                      style={{
-                        height: `${Math.round((minutes / trendMax) * 100)}%`,
-                      }}
-                      aria-label={`${MONTHS[i]}: ${formatDuration(minutes)}`}
-                    />
-                  </div>
-                  <span className="microlabel">{MONTHS[i]}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <Card className="mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="mb-0">
-              Planned vs actual · week of {weekKey}
-            </CardTitle>
-            <nav className="flex gap-3 text-xs">
-              <Link
-                className="text-muted hover:text-foreground"
-                href={`/summary?period=${period ?? ""}&week=${shiftWeek(-1)}`}
-              >
-                ← Prev week
-              </Link>
-              <Link
-                className="text-muted hover:text-foreground"
-                href={`/summary?period=${period ?? ""}&week=${shiftWeek(1)}`}
-              >
-                Next week →
-              </Link>
-            </nav>
-          </div>
-          <div className="mt-4">
-            <WeekCompareChart rows={compareRows} />
-          </div>
-        </Card>
-
-        <Card className="mb-6">
-          <CardTitle>Average weekly time per category</CardTitle>
-          <CategoryAverageChart rows={rangeRows} />
-        </Card>
+        <SummaryHistoryChart
+          weeks={historyWeeks}
+          recordedMinutes={recorded.total}
+          plannedMinutes={planned.total}
+          categories={historyCategories}
+          recordedByCategory={recorded.byCategory}
+          plannedByCategory={planned.byCategory}
+          categoryTotals={categoryTotals}
+        />
 
         {summary.categories.length === 0 ? (
           <p className="text-sm text-muted">Nothing recorded in this period.</p>

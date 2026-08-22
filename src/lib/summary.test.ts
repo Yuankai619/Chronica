@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Category } from "@/lib/categories";
 import type { TimeEntry } from "@/lib/entries";
-import { monthlyRecordedTrend, summarizePeriod } from "./summary";
+import {
+  bucketPlannedMinutesByWeek,
+  bucketRecordedMinutesByWeek,
+  summarizePeriod,
+  weeklyHistoryWeeks,
+} from "./summary";
 
 function category(id: string, excluded = false): Category {
   return {
@@ -90,17 +95,83 @@ describe("summarizePeriod", () => {
   });
 });
 
-describe("monthlyRecordedTrend", () => {
-  it("buckets recorded time by month", () => {
-    const trend = monthlyRecordedTrend(
+describe("weeklyHistoryWeeks", () => {
+  it("returns ascending Monday keys spanning the given range", () => {
+    // 2026-01-05 is a Monday; 2026-01-19 is a Monday two weeks later.
+    const weeks = weeklyHistoryWeeks("2026-01-05", "2026-01-19");
+    expect(weeks).toEqual(["2026-01-05", "2026-01-12", "2026-01-19"]);
+  });
+
+  it("normalizes a mid-week start to that week's Monday", () => {
+    // 2026-01-07 is a Wednesday, in the week starting 2026-01-05.
+    const weeks = weeklyHistoryWeeks("2026-01-07", "2026-01-05");
+    expect(weeks).toEqual(["2026-01-05"]);
+  });
+});
+
+describe("bucketRecordedMinutesByWeek", () => {
+  const weeks = weeklyHistoryWeeks("2026-01-05", "2026-01-12");
+
+  it("sums minutes into the week each entry started in", () => {
+    const buckets = bucketRecordedMinutesByWeek(
       [
         entry("work", 100, "2026-01-05T09:00:00Z"),
-        entry("work", 50, "2026-07-05T09:00:00Z"),
-        entry("games", 500, "2026-07-06T09:00:00Z"),
+        entry("work", 50, "2026-01-13T09:00:00Z"),
+        entry("games", 20, "2026-01-13T09:00:00Z"),
       ],
+      weeks,
       "UTC",
+      new Set(),
     );
-    expect(trend[0]).toBe(100);
-    expect(trend[6]).toBe(550);
+    expect(buckets.total).toEqual([100, 70]);
+    expect(buckets.byCategory.work).toEqual([100, 50]);
+    expect(buckets.byCategory.games).toEqual([0, 20]);
+  });
+
+  it("drops entries outside the given weeks", () => {
+    const buckets = bucketRecordedMinutesByWeek(
+      [entry("work", 100, "2025-01-05T09:00:00Z")],
+      weeks,
+      "UTC",
+      new Set(),
+    );
+    expect(buckets.total).toEqual([0, 0]);
+  });
+
+  it("leaves an excluded category out of the total but keeps its own row", () => {
+    const buckets = bucketRecordedMinutesByWeek(
+      [entry("sleep", 480, "2026-01-05T09:00:00Z")],
+      weeks,
+      "UTC",
+      new Set(["sleep"]),
+    );
+    expect(buckets.total).toEqual([0, 0]);
+    expect(buckets.byCategory.sleep).toEqual([480, 0]);
+  });
+});
+
+describe("bucketPlannedMinutesByWeek", () => {
+  const weeks = weeklyHistoryWeeks("2026-01-05", "2026-01-12");
+
+  it("sums expected minutes into the week each item falls in", () => {
+    const buckets = bucketPlannedMinutesByWeek(
+      [
+        { day: "2026-01-06", expected_minutes: 60, category_id: "work" },
+        { day: "2026-01-12", expected_minutes: 30, category_id: "work" },
+        { day: "2026-01-12", expected_minutes: 45, category_id: "games" },
+      ],
+      weeks,
+    );
+    expect(buckets.total).toEqual([60, 75]);
+    expect(buckets.byCategory.work).toEqual([60, 30]);
+  });
+
+  it("still counts uncategorized items toward the total, not byCategory", () => {
+    const buckets = bucketPlannedMinutesByWeek(
+      [{ day: "2026-01-05", expected_minutes: 60, category_id: null }],
+      weeks,
+    );
+    expect(buckets.total).toEqual([60, 0]);
+    expect(buckets.byCategory).toEqual({});
   });
 });
