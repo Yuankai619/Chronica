@@ -8,6 +8,11 @@ import {
   type ConversationPage,
   type MessagePage,
 } from "@/server/agent/conversations";
+import {
+  deleteMemory,
+  upsertMemory,
+  type MemoryRow,
+} from "@/server/agent/memories";
 
 async function getAuthed() {
   const supabase = await createClient();
@@ -38,4 +43,20 @@ export async function deleteConversationAction(
 ): Promise<void> {
   const { supabase, user } = await getAuthed();
   await deleteConversation(supabase, user.id, conversationId);
+}
+
+/** Manual edit from the Memory drawer: keeps the memory's kind/category/confidence, updates content. */
+export async function updateMemoryContentAction(
+  id: string,
+  kind: MemoryRow["kind"],
+  content: string,
+  categoryId: string | null,
+): Promise<void> {
+  const { supabase, user } = await getAuthed();
+  await upsertMemory(supabase, user.id, { id, kind, content, categoryId });
+}
+
+export async function deleteMemoryAction(id: string): Promise<void> {
+  const { supabase, user } = await getAuthed();
+  await deleteMemory(supabase, user.id, id);
 }

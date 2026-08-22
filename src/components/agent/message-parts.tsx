@@ -2,9 +2,50 @@
 
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { cn } from "@/lib/utils";
-import { Loader2, Wrench } from "lucide-react";
+import { Brain, Loader2, Wrench } from "lucide-react";
 
-function ToolCard({ part }: { part: ReturnType<typeof extractToolPart> }) {
+type ToolPart = ReturnType<typeof extractToolPart>;
+
+const MEMORY_TOOL_NAMES = new Set(["upsertMemory", "deleteMemory"]);
+
+function MemoryCard({
+  part,
+  onOpenMemory,
+}: {
+  part: NonNullable<ToolPart>;
+  onOpenMemory?: () => void;
+}) {
+  const output = part.state === "output-available" ? part.output : null;
+  const forgot = part.name === "deleteMemory";
+  const content =
+    output && typeof output === "object" && "content" in output
+      ? String((output as { content: unknown }).content)
+      : undefined;
+
+  return (
+    <div className="my-1 flex items-start gap-2 rounded-md border border-accent/20 bg-accent/5 px-3 py-2 text-xs">
+      <Brain className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <span className="text-foreground/80">
+          {forgot
+            ? "Forgot a memory."
+            : (content ?? "Remembered something new.")}
+        </span>
+        {onOpenMemory ? (
+          <button
+            type="button"
+            onClick={onOpenMemory}
+            className="ml-2 cursor-pointer text-accent hover:underline"
+          >
+            View in Memory
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ToolCard({ part }: { part: ToolPart }) {
   if (!part) return null;
   const name = part.name;
   const running =
@@ -60,7 +101,13 @@ function extractToolPart(part: UIMessage["parts"][number]) {
 }
 
 /** Renders one UIMessage's parts: text inline, tool calls as collapsible cards. */
-export function MessageParts({ message }: { message: UIMessage }) {
+export function MessageParts({
+  message,
+  onOpenMemory,
+}: {
+  message: UIMessage;
+  onOpenMemory?: () => void;
+}) {
   return (
     <>
       {message.parts.map((part, i) => {
@@ -75,8 +122,13 @@ export function MessageParts({ message }: { message: UIMessage }) {
           );
         }
         const toolPart = extractToolPart(part);
-        if (toolPart) return <ToolCard key={i} part={toolPart} />;
-        return null;
+        if (!toolPart) return null;
+        if (MEMORY_TOOL_NAMES.has(toolPart.name)) {
+          return (
+            <MemoryCard key={i} part={toolPart} onOpenMemory={onOpenMemory} />
+          );
+        }
+        return <ToolCard key={i} part={toolPart} />;
       })}
     </>
   );

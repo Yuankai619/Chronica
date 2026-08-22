@@ -16,6 +16,7 @@ import {
 } from "@/server/agent/model";
 import { buildSystemPrompt } from "@/server/agent/context";
 import { buildReadTools } from "@/server/agent/tools";
+import { buildMemoryTools } from "@/server/agent/memory-tools";
 import {
   createConversation,
   loadFullHistory,
@@ -90,7 +91,8 @@ export async function POST(request: Request) {
     DEFAULT_HISTORY_TOKEN_BUDGET,
   );
 
-  const tools = buildReadTools({ supabase, userId: user.id, timeZone });
+  const toolCtx = { supabase, userId: user.id, timeZone };
+  const tools = { ...buildReadTools(toolCtx), ...buildMemoryTools(toolCtx) };
   const finalConversationId = conversationId;
 
   const result = streamText({

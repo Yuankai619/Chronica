@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { sortCategories } from "@/lib/categories";
 import { dayKeyInTz } from "@/lib/tz";
+import { listMemories } from "@/server/agent/memories";
 
 type Client = SupabaseClient<Database>;
 
@@ -21,7 +22,13 @@ Conduct:
 - Planned items with a gcalEventId are Google Calendar mirrors; never
   propose creating, editing, or deleting one.
 - When you infer something that isn't a stored fact (e.g. guessing bedtime
-  from the last entry of a day), say plainly that it's an inference.`;
+  from the last entry of a day), say plainly that it's an inference.
+- Use upsertMemory to record durable patterns/preferences/trends/constraints
+  worth remembering across weeks — not a running summary of this chat. If
+  the user confirms or corrects something already listed under Long-term
+  memory, call upsertMemory with that memory's id to reconfirm/revise it
+  rather than creating a near-duplicate. Use deleteMemory when a memory
+  turns out to be wrong.`;
 
 /**
  * The stable-prefix portion of the system prompt: slow-changing data
@@ -34,15 +41,11 @@ export async function buildSystemPrompt(
   userId: string,
   timeZone: string,
 ): Promise<string> {
-  const [{ data: categories }, { data: principles }, { data: memories }] =
+  const [{ data: categories }, { data: principles }, memories] =
     await Promise.all([
       supabase.from("categories").select("*").eq("user_id", userId),
       supabase.from("principles").select("id, content").eq("user_id", userId),
-      supabase
-        .from("ai_memories")
-        .select("id, kind, content, confidence, category_id")
-        .eq("user_id", userId)
-        .order("confidence", { ascending: false }),
+      listMemories(supabase, userId),
     ]);
 
   const today = dayKeyInTz(new Date(), timeZone);
@@ -69,10 +72,10 @@ export async function buildSystemPrompt(
   }
 
   lines.push(`\n## Long-term memory`);
-  if (memories && memories.length > 0) {
+  if (memories.length > 0) {
     for (const m of memories) {
       lines.push(
-        `- [${m.kind}, confidence ${m.confidence.toFixed(2)}${m.category_id ? `, category=${m.category_id}` : ""}] ${m.content} (id=${m.id})`,
+        `- [${m.kind}, confidence ${m.displayConfidence.toFixed(2)}${m.categoryId ? `, category=${m.categoryId}` : ""}] ${m.content} (id=${m.id})`,
       );
     }
   } else {
