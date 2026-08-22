@@ -8,6 +8,7 @@ import { formatDuration } from "@/lib/entries";
 import { dayKeyInTz, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
 import { Card } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page-container";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -83,46 +84,48 @@ export default async function Home() {
   const remaining = Math.max(0, plannedMinutes - recordedToday);
 
   return (
-    <main>
-      <h1 className="mb-6 text-xl font-semibold">Timer</h1>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <TimerPanel
-          categories={sortCategories(
-            (categories ?? []).filter((c) => c.archived_at === null),
-          )}
-          session={session}
-          taskSections={sortTasksForPicker(tasks.tasks, todayKey)}
-          plannedToday={plannedToday ?? []}
-          todayKey={todayKey}
-          timeZone={timeZone}
-          calendarEvent={
-            activeCalendarItem
-              ? {
-                  title: activeCalendarItem.title ?? "(untitled event)",
-                  startAt: activeCalendarItem.start_at,
-                  endAt: activeCalendarItem.end_at,
-                }
-              : null
-          }
-          nextCalendarStartAt={nextCalendarStartAt}
-        />
-        <div className="order-first grid grid-cols-2 gap-3 lg:order-0 lg:grid-cols-1 lg:content-start">
-          <Card>
-            <p className="microlabel mb-1">Recorded today</p>
-            <p className="font-mono text-2xl font-semibold tabular-nums">
-              {formatDuration(recordedToday)}
-            </p>
-          </Card>
-          <Card>
-            <p className="microlabel mb-1">Planned remaining</p>
-            <p
-              className={`font-mono text-2xl font-semibold tabular-nums ${remaining > 0 ? "text-accent" : ""}`}
-            >
-              {formatDuration(remaining)}
-            </p>
-          </Card>
+    <PageContainer>
+      <main>
+        <h1 className="mb-6 text-xl font-semibold">Timer</h1>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <TimerPanel
+            categories={sortCategories(
+              (categories ?? []).filter((c) => c.archived_at === null),
+            )}
+            session={session}
+            taskSections={sortTasksForPicker(tasks.tasks, todayKey)}
+            plannedToday={plannedToday ?? []}
+            todayKey={todayKey}
+            timeZone={timeZone}
+            calendarEvent={
+              activeCalendarItem
+                ? {
+                    title: activeCalendarItem.title ?? "(untitled event)",
+                    startAt: activeCalendarItem.start_at,
+                    endAt: activeCalendarItem.end_at,
+                  }
+                : null
+            }
+            nextCalendarStartAt={nextCalendarStartAt}
+          />
+          <div className="order-first grid grid-cols-2 gap-3 lg:order-0 lg:grid-cols-1 lg:content-start">
+            <Card>
+              <p className="microlabel mb-1">Recorded today</p>
+              <p className="font-mono text-2xl font-semibold tabular-nums">
+                {formatDuration(recordedToday)}
+              </p>
+            </Card>
+            <Card>
+              <p className="microlabel mb-1">Planned remaining</p>
+              <p
+                className={`font-mono text-2xl font-semibold tabular-nums ${remaining > 0 ? "text-accent" : ""}`}
+              >
+                {formatDuration(remaining)}
+              </p>
+            </Card>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </PageContainer>
   );
 }

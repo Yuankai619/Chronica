@@ -4,6 +4,7 @@ import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { cn } from "@/lib/utils";
 import { Brain, Calendar, Check, Loader2, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Markdown } from "@/components/agent/markdown";
 
 type ToolPart = ReturnType<typeof extractToolPart>;
 
@@ -196,14 +197,7 @@ export function MessageParts({
     <>
       {message.parts.map((part, i) => {
         if (part.type === "text") {
-          return (
-            <p
-              key={i}
-              className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
-            >
-              {part.text}
-            </p>
-          );
+          return <Markdown key={i} text={part.text} />;
         }
         const toolPart = extractToolPart(part);
         if (!toolPart) return null;

@@ -141,6 +141,16 @@ export function MemoryDrawer({
   onClose: () => void;
 }) {
   const [memories, setMemories] = useState(initialMemories);
+  // The parent re-fetches memories after every agent turn and passes a
+  // fresh array down; adjust local state during render (React's
+  // documented pattern for this — not an effect, which would cause an
+  // extra render pass) so newly-written memories show up without a page
+  // refresh. Local edits/deletes below still apply via setMemories.
+  const [syncedFrom, setSyncedFrom] = useState(initialMemories);
+  if (initialMemories !== syncedFrom) {
+    setSyncedFrom(initialMemories);
+    setMemories(initialMemories);
+  }
 
   if (!open) return null;
 

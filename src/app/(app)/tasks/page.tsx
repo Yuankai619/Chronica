@@ -15,6 +15,7 @@ import { RefreshTasksButton } from "@/components/refresh-tasks-button";
 import { cn } from "@/lib/utils";
 import { dayKeyInTz, shiftedDayKey, timeInTz, zonedDayStart } from "@/lib/tz";
 import { getUserTimeZone } from "@/server/tz";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Tasks — Chronica" };
 
@@ -157,141 +158,143 @@ export default async function TasksPage({
     });
 
   return (
-    <main>
-      <h1 className="mb-2 text-xl font-semibold">Task time costs</h1>
-      <p className="mb-5 text-sm text-muted">
-        Tasks due today and tasks with tracked time. Only tasks with time
-        entries can be checked off — others are read-only.
-      </p>
-
-      <div className="mb-6 flex items-center gap-1 border-b border-hairline">
-        {[
-          { href: "/tasks", label: "Open", active: !showCompleted },
-          {
-            href: "/tasks?tab=completed",
-            label: `Completed today${completed && completed.length > 0 ? ` (${completed.length})` : ""}`,
-            active: showCompleted,
-          },
-        ].map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
-              t.active
-                ? "border-accent text-foreground"
-                : "border-transparent text-muted hover:text-foreground",
-            )}
-          >
-            {t.label}
-          </Link>
-        ))}
-        <div className="ml-auto pb-1">
-          <RefreshTasksButton />
-        </div>
-      </div>
-
-      {showCompleted ? null : allTasks.truncated ? (
-        <p className="mb-4 text-sm text-muted">
-          Completion status may be out of date — Microsoft data is incomplete.
+    <PageContainer>
+      <main>
+        <h1 className="mb-2 text-xl font-semibold">Task time costs</h1>
+        <p className="mb-5 text-sm text-muted">
+          Tasks due today and tasks with tracked time. Only tasks with time
+          entries can be checked off — others are read-only.
         </p>
-      ) : null}
 
-      {showCompleted ? (
-        (completed ?? []).length === 0 ? (
+        <div className="mb-6 flex items-center gap-1 border-b border-hairline">
+          {[
+            { href: "/tasks", label: "Open", active: !showCompleted },
+            {
+              href: "/tasks?tab=completed",
+              label: `Completed today${completed && completed.length > 0 ? ` (${completed.length})` : ""}`,
+              active: showCompleted,
+            },
+          ].map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={cn(
+                "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+                t.active
+                  ? "border-accent text-foreground"
+                  : "border-transparent text-muted hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </Link>
+          ))}
+          <div className="ml-auto pb-1">
+            <RefreshTasksButton />
+          </div>
+        </div>
+
+        {showCompleted ? null : allTasks.truncated ? (
+          <p className="mb-4 text-sm text-muted">
+            Completion status may be out of date — Microsoft data is incomplete.
+          </p>
+        ) : null}
+
+        {showCompleted ? (
+          (completed ?? []).length === 0 ? (
+            <Card>
+              <p className="text-sm text-muted">
+                Nothing completed here today. Completed tasks clear
+                automatically after the day ends.
+              </p>
+            </Card>
+          ) : (
+            <ul className="flex flex-col">
+              {(completed ?? []).map((task) => (
+                <li
+                  key={task.id}
+                  className="flex items-center justify-between gap-3 border-b border-hairline py-3"
+                >
+                  <span className="font-medium line-through decoration-muted/60">
+                    <TaskTitle title={task.title} />
+                  </span>
+                  <span className="font-mono text-xs text-muted tabular-nums">
+                    {timeInTz(new Date(task.completed_at), timeZone)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : rows.length === 0 ? (
           <Card>
             <p className="text-sm text-muted">
-              Nothing completed here today. Completed tasks clear automatically
-              after the day ends.
+              No task-linked entries yet. Link a Microsoft account in Settings,
+              then attach a task when starting a timer or logging time.
             </p>
           </Card>
         ) : (
-          <ul className="flex flex-col">
-            {(completed ?? []).map((task) => (
-              <li
-                key={task.id}
-                className="flex items-center justify-between gap-3 border-b border-hairline py-3"
-              >
-                <span className="font-medium line-through decoration-muted/60">
-                  <TaskTitle title={task.title} />
-                </span>
-                <span className="font-mono text-xs text-muted tabular-nums">
-                  {timeInTz(new Date(task.completed_at), timeZone)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
-      ) : rows.length === 0 ? (
-        <Card>
-          <p className="text-sm text-muted">
-            No task-linked entries yet. Link a Microsoft account in Settings,
-            then attach a task when starting a timer or logging time.
-          </p>
-        </Card>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-hairline text-left">
-                <th className="microlabel py-2 font-normal">Done</th>
-                <th className="microlabel py-2 font-normal">Task</th>
-                <th className="microlabel py-2 text-right font-normal">
-                  Total time
-                </th>
-                <th className="microlabel py-2 text-right font-normal">
-                  Entries
-                </th>
-                <th className="microlabel py-2 text-right font-normal">
-                  Last activity
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((task) => {
-                const isLinked = task.entryCount > 0;
-                return (
-                  <tr
-                    key={task.id}
-                    className={cn(
-                      "border-b border-hairline",
-                      !isLinked && "opacity-70",
-                    )}
-                  >
-                    <td className="py-2.5 pr-2">
-                      <TaskCompleteCheckbox
-                        taskId={task.id}
-                        listId={task.listId}
-                        title={task.title}
-                        disabled={!isLinked}
-                      />
-                    </td>
-                    <td className="py-2.5 pr-3 font-medium">
-                      <TaskTitle title={task.title} />
-                      {!isLinked ? (
-                        <span className="ml-2 text-[0.65rem] tracking-wider text-muted uppercase">
-                          due today
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-accent tabular-nums">
-                      {isLinked ? formatDuration(task.totalMinutes) : "—"}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-muted tabular-nums">
-                      {isLinked ? task.entryCount : "—"}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-muted tabular-nums">
-                      {isLinked && task.lastActivity
-                        ? dayKeyInTz(new Date(task.lastActivity), timeZone)
-                        : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </main>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-hairline text-left">
+                  <th className="microlabel py-2 font-normal">Done</th>
+                  <th className="microlabel py-2 font-normal">Task</th>
+                  <th className="microlabel py-2 text-right font-normal">
+                    Total time
+                  </th>
+                  <th className="microlabel py-2 text-right font-normal">
+                    Entries
+                  </th>
+                  <th className="microlabel py-2 text-right font-normal">
+                    Last activity
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((task) => {
+                  const isLinked = task.entryCount > 0;
+                  return (
+                    <tr
+                      key={task.id}
+                      className={cn(
+                        "border-b border-hairline",
+                        !isLinked && "opacity-70",
+                      )}
+                    >
+                      <td className="py-2.5 pr-2">
+                        <TaskCompleteCheckbox
+                          taskId={task.id}
+                          listId={task.listId}
+                          title={task.title}
+                          disabled={!isLinked}
+                        />
+                      </td>
+                      <td className="py-2.5 pr-3 font-medium">
+                        <TaskTitle title={task.title} />
+                        {!isLinked ? (
+                          <span className="ml-2 text-[0.65rem] tracking-wider text-muted uppercase">
+                            due today
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-2.5 text-right font-mono text-accent tabular-nums">
+                        {isLinked ? formatDuration(task.totalMinutes) : "—"}
+                      </td>
+                      <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+                        {isLinked ? task.entryCount : "—"}
+                      </td>
+                      <td className="py-2.5 text-right font-mono text-muted tabular-nums">
+                        {isLinked && task.lastActivity
+                          ? dayKeyInTz(new Date(task.lastActivity), timeZone)
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+    </PageContainer>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from "@/lib/tz";
 import type { PickerSections } from "@/lib/tasks";
 import { sortTasksForPicker } from "@/lib/tasks";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Entries — Chronica" };
 
@@ -101,58 +102,60 @@ export default async function EntriesPage({
   const navLink = "text-muted hover:text-foreground";
 
   return (
-    <main>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">
-          Entries · <span className="font-mono tabular-nums">{weekKey}</span>
-        </h1>
-        <nav className="flex gap-3 text-sm">
-          <Link
-            className={navLink}
-            href={`/entries?week=${addDaysKey(weekKey, -7)}`}
-          >
-            ← Prev
-          </Link>
-          <Link className={navLink} href="/entries">
-            This week
-          </Link>
-          {isCurrentWeek ? (
-            <span aria-hidden className="text-muted/40">
-              Next →
-            </span>
-          ) : (
+    <PageContainer>
+      <main>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">
+            Entries · <span className="font-mono tabular-nums">{weekKey}</span>
+          </h1>
+          <nav className="flex gap-3 text-sm">
             <Link
               className={navLink}
-              href={`/entries?week=${addDaysKey(weekKey, 7)}`}
+              href={`/entries?week=${addDaysKey(weekKey, -7)}`}
             >
-              Next →
+              ← Prev
             </Link>
-          )}
-          <Link className={navLink} href="/entries/deleted">
-            Deleted
-          </Link>
-        </nav>
-      </div>
+            <Link className={navLink} href="/entries">
+              This week
+            </Link>
+            {isCurrentWeek ? (
+              <span aria-hidden className="text-muted/40">
+                Next →
+              </span>
+            ) : (
+              <Link
+                className={navLink}
+                href={`/entries?week=${addDaysKey(weekKey, 7)}`}
+              >
+                Next →
+              </Link>
+            )}
+            <Link className={navLink} href="/entries/deleted">
+              Deleted
+            </Link>
+          </nav>
+        </div>
 
-      {isCurrentWeek ? (
-        <div className="mb-6">
-          <QuickAddCard
+        {isCurrentWeek ? (
+          <div className="mb-6">
+            <QuickAddCard
+              categories={sorted}
+              taskSections={taskSections}
+              todayKey={todayKey}
+            />
+          </div>
+        ) : null}
+
+        <Suspense key={weekKey} fallback={<EntryListSkeleton />}>
+          <WeekEntries
+            weekKey={weekKey}
+            timeZone={timeZone}
+            todayKey={todayKey}
             categories={sorted}
             taskSections={taskSections}
-            todayKey={todayKey}
           />
-        </div>
-      ) : null}
-
-      <Suspense key={weekKey} fallback={<EntryListSkeleton />}>
-        <WeekEntries
-          weekKey={weekKey}
-          timeZone={timeZone}
-          todayKey={todayKey}
-          categories={sorted}
-          taskSections={taskSections}
-        />
-      </Suspense>
-    </main>
+        </Suspense>
+      </main>
+    </PageContainer>
   );
 }

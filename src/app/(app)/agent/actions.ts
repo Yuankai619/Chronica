@@ -10,6 +10,7 @@ import {
 } from "@/server/agent/conversations";
 import {
   deleteMemory,
+  listMemories,
   upsertMemory,
   type MemoryRow,
 } from "@/server/agent/memories";
@@ -59,4 +60,10 @@ export async function updateMemoryContentAction(
 export async function deleteMemoryAction(id: string): Promise<void> {
   const { supabase, user } = await getAuthed();
   await deleteMemory(supabase, user.id, id);
+}
+
+/** Re-fetches the full memory list — called after the agent writes memories mid-conversation. */
+export async function listMemoriesAction(): Promise<MemoryRow[]> {
+  const { supabase, user } = await getAuthed();
+  return listMemories(supabase, user.id);
 }

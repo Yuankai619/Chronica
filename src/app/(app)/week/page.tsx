@@ -18,6 +18,7 @@ import { weekDayGaps } from "@/lib/unrecorded";
 import { SettlementTable } from "@/components/settlement-table";
 import { DayGaps } from "@/components/day-gaps";
 import { Card } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page-container";
 
 export const metadata = { title: "Week — Chronica" };
 
@@ -62,83 +63,86 @@ export default async function WeekPage({
   const excluded = excludedCategoryIds(categories ?? []);
 
   return (
-    <main>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">
-          Week of <span className="font-mono tabular-nums">{weekKey}</span>
-          {isCurrentWeek ? (
-            <span className="microlabel ml-3 text-accent">live</span>
-          ) : null}
-        </h1>
-        <nav className="flex gap-3 text-sm">
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/week?week=${addDaysKey(weekKey, -7)}`}
-          >
-            ← Prev
-          </Link>
-          <Link className="text-muted hover:text-foreground" href="/week">
-            This week
-          </Link>
-          <Link
-            className="text-muted hover:text-foreground"
-            href={`/week?week=${addDaysKey(weekKey, 7)}`}
-          >
-            Next →
-          </Link>
-        </nav>
-      </div>
+    <PageContainer>
+      <main>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">
+            Week of <span className="font-mono tabular-nums">{weekKey}</span>
+            {isCurrentWeek ? (
+              <span className="microlabel ml-3 text-accent">live</span>
+            ) : null}
+          </h1>
+          <nav className="flex gap-3 text-sm">
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/week?week=${addDaysKey(weekKey, -7)}`}
+            >
+              ← Prev
+            </Link>
+            <Link className="text-muted hover:text-foreground" href="/week">
+              This week
+            </Link>
+            <Link
+              className="text-muted hover:text-foreground"
+              href={`/week?week=${addDaysKey(weekKey, 7)}`}
+            >
+              Next →
+            </Link>
+          </nav>
+        </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        <Card>
-          <p className="microlabel mb-1">Recorded</p>
-          <p className="font-mono text-2xl font-semibold tabular-nums">
-            {formatDuration(settlement.totalActualMinutes)}
-          </p>
-          {settlement.excludedMinutes > 0 ? (
-            <p className="mt-1 text-xs text-muted">
-              + {formatDuration(settlement.excludedMinutes)} not counted
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <Card>
+            <p className="microlabel mb-1">Recorded</p>
+            <p className="font-mono text-2xl font-semibold tabular-nums">
+              {formatDuration(settlement.totalActualMinutes)}
             </p>
-          ) : null}
-        </Card>
-        <Card>
-          <p className="microlabel mb-1">Planned</p>
-          <p className="font-mono text-2xl font-semibold tabular-nums">
-            {settlement.totalPlannedMinutes === null
-              ? "\u2014"
-              : formatDuration(settlement.totalPlannedMinutes)}
-          </p>
-          {settlement.excludedPlannedMinutes > 0 ? (
-            <p className="mt-1 text-xs text-muted">
-              + {formatDuration(settlement.excludedPlannedMinutes)} not counted
+            {settlement.excludedMinutes > 0 ? (
+              <p className="mt-1 text-xs text-muted">
+                + {formatDuration(settlement.excludedMinutes)} not counted
+              </p>
+            ) : null}
+          </Card>
+          <Card>
+            <p className="microlabel mb-1">Planned</p>
+            <p className="font-mono text-2xl font-semibold tabular-nums">
+              {settlement.totalPlannedMinutes === null
+                ? "\u2014"
+                : formatDuration(settlement.totalPlannedMinutes)}
             </p>
-          ) : null}
-        </Card>
-      </div>
+            {settlement.excludedPlannedMinutes > 0 ? (
+              <p className="mt-1 text-xs text-muted">
+                + {formatDuration(settlement.excludedPlannedMinutes)} not
+                counted
+              </p>
+            ) : null}
+          </Card>
+        </div>
 
-      {!settlement.hasPlan ? (
-        <p className="mb-4 text-sm text-muted">
-          Nothing planned this week — actuals only, no over/under.
-        </p>
-      ) : null}
+        {!settlement.hasPlan ? (
+          <p className="mb-4 text-sm text-muted">
+            Nothing planned this week — actuals only, no over/under.
+          </p>
+        ) : null}
 
-      <SettlementTable settlement={settlement} />
+        <SettlementTable settlement={settlement} />
 
-      <div className="mt-10">
-        <DayGaps
-          categories={categories ?? []}
-          gaps={weekDayGaps(
-            weekKey,
-            (entries ?? []).filter((e) => !excluded.has(e.category_id)),
-            plannedByDay(
-              (items ?? []).filter(
-                (i) => i.category_id === null || !excluded.has(i.category_id),
+        <div className="mt-10">
+          <DayGaps
+            categories={categories ?? []}
+            gaps={weekDayGaps(
+              weekKey,
+              (entries ?? []).filter((e) => !excluded.has(e.category_id)),
+              plannedByDay(
+                (items ?? []).filter(
+                  (i) => i.category_id === null || !excluded.has(i.category_id),
+                ),
               ),
-            ),
-            timeZone,
-          )}
-        />
-      </div>
-    </main>
+              timeZone,
+            )}
+          />
+        </div>
+      </main>
+    </PageContainer>
   );
 }
